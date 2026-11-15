@@ -30,4 +30,3 @@ A lightweight, self-hosted Node.js local streaming server designed for synchroni
 3. Start the server:
    ```bash
    node server.js
-
