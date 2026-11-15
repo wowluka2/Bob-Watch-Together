@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bob Watch Together</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="ambient"></div>
+<header>
+  <button class="brand" id="home">Bob Watch Together</button>
+  <div id="status"><span id="dot"></span><span id="viewers">łączenie…</span></div>
+</header>
+
+<main id="libView">
+  <div class="bar">
+    <h2>Biblioteka</h2>
+  </div>
+  <div class="filter-bar">
+    <input id="q" type="search" placeholder="Szukaj filmu lub serialu…" aria-label="Szukaj filmu">
+    <select id="sortSelect" aria-label="Sortuj według">
+      <option value="nameAsc">Nazwa: A do Z</option>
+      <option value="nameDesc">Nazwa: Z do A</option>
+      <option value="dateNew">Data wydania: Najnowsze</option>
+      <option value="dateOld">Data wydania: Najstarsze</option>
+      <option value="imdbDesc">Ocena IMDb: Od najwyższej</option>
+    </select>
+  </div>
+
+  <div class="resume" hidden><span class="resumeText"></span><button class="primary resumeBtn">Wróć do seansu</button></div>
+  <p id="libNote">Skanuję pliki…</p>
+  <div id="grid"></div>
+</main>
+
+<main id="titleView" hidden>
+  <div class="top">
+    <button class="ghost" id="tBack">‹ Biblioteka</button>
+    <div>
+      <h2 id="tTitle"></h2>
+      <div style="display:flex; gap:10px; align-items:center; margin-top:6px;">
+        <div id="tImdb" class="imdb-badge"></div>
+        <span id="tReleased" class="dim" style="font-size:13px;"></span>
+      </div>
+      <p id="tSub" style="margin-top:4px;"></p>
+    </div>
+  </div>
+  <div class="resume" hidden><span class="resumeText"></span><button class="primary resumeBtn">Wróć do seansu</button></div>
+  <div id="eps"></div>
+</main>
+
+<main id="playView" hidden>
+  <div class="top">
+    <button class="ghost" id="back">‹ Biblioteka</button>
+    <div><h2 id="title"></h2><p id="sub"></p></div>
+    <div id="seriesBar" style="display: flex; gap: 8px; align-items: center;">
+      <button class="ghost" id="epsBtn" hidden>Odcinki</button>
+      <button class="ghost" id="nextBtn" hidden>Następny ›</button>
+      <!-- Przycisk zakończenia seansu -->
+      <button class="ghost" id="endSessionBtn" style="border-color: #c0554f; color: #ff6b6b;">Zakończ seans</button>
+    </div>
+  </div>
+  <div class="screen">
+    <video id="v" muted playsinline preload="auto" controls></video>
+    <audio id="aud" preload="auto"></audio>
+    <div class="veil" id="join" hidden><div><p>Kliknij, aby dołączyć do wspólnego seansu</p><button class="primary" id="joinBtn">Dołącz</button></div></div>
+  </div>
+  <div class="opts">
+    <label>Dźwięk<select id="aSel"></select></label>
+    <label>Głośność<input type="range" id="volRange" min="0" max="1" step="0.01" value="1"></label>
+    <label>Napisy<select id="sSel"></select></label>
+  </div>
+  <p id="warn"></p>
+</main>
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const v = $('#v');
+const aud = $('#aud');
+const volRange = $('#volRange');
+const myId = Math.random().toString(36).slice(2);
+const enc = encodeURIComponent;
+let lib = [], hasFfmpeg = true, cur = null, token = 0, suppressUntil = 0;
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const quiet = (ms = 900) => { suppressUntil = Math.max(suppressUntil, Date.now() + ms); };
+const send = a => fetch('/api/action', { method: 'POST', body: JSON.stringify({ ...a, id: myId }) }).catch(() => {});
+const getState = async () => (await fetch('/api/state')).json();
+function toast(t) { const e = $('#toast'); e.textContent = t; e.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('show'), 2400); }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+const hue = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const fmtDur = s => { if (!s) return ''; const m = Math.round(s / 60); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
+
+const views = { lib: $('#libView'), title: $('#titleView'), play: $('#playView') };
+const plural = n => n === 1 ? '1 odcinek' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? `${n} odcinki` : `${n} odcinków`;
+function setView(name, poster) {
+  for (const k in views) views[k].hidden = k !== name;
+  $('#ambient').style.backgroundImage = poster ? `url("${poster}")` : '';
+  updateResume();
+}
+function updateResume() {
+  document.querySelectorAll('.resume').forEach(r => {
+    r.hidden = !cur;
+    if (cur) r.querySelector('.resumeText').textContent = 'Seans trwa: ' + (cur.t.kind === 'series' ? `${cur.t.title}, ${cur.title}` : cur.t.title);
+  });
+}
+function showLib() { setView('lib'); loadLibrary(); }
+function showPlay() { setView('play', cur && cur.t.poster); }
+
+async function loadLibrary() {
+  const r = await (await fetch('/api/library')).json();
+  lib = r.items; hasFfmpeg = r.ffmpeg;
+  renderLibrary();
+}
+
+function renderLibrary() {
+  const query = $('#q').value.trim().toLowerCase();
+  const sortBy = $('#sortSelect').value;
+  const grid = $('#grid'); 
+  grid.replaceChildren();
+
+  let items = lib.filter(m => m.title.toLowerCase().includes(query));
+
+  items.sort((a, b) => {
+    if (sortBy === 'nameAsc') return a.title.localeCompare(b.title, 'pl', { numeric: true });
+    if (sortBy === 'nameDesc') return b.title.localeCompare(a.title, 'pl', { numeric: true });
+    if (sortBy === 'dateNew') return (b.released || '').localeCompare(a.released || '');
+    if (sortBy === 'dateOld') return (a.released || '').localeCompare(b.released || '');
+    if (sortBy === 'imdbDesc') return (parseFloat(b.imdb) || 0) - (parseFloat(a.imdb) || 0);
+    return 0;
+  });
+
+  $('#libNote').textContent = !lib.length ? 'Biblioteka jest pusta.' : !items.length ? 'Brak wyników wyszukiwania.' : '';
+  for (const m of items) grid.append(card(m));
+}
+
+function card(m) {
+  const b = el('button', 'card');
+  const p = el('div', 'poster');
+  p.style.background = `linear-gradient(160deg, hsl(${hue(m.id)} 45% 32%), hsl(${(hue(m.id) + 55) % 360} 40% 14%))`;
+  p.append(el('span', 'ph', m.title.charAt(0).toUpperCase()));
+  const img = new Image(); img.loading = 'lazy'; img.alt = ''; img.src = m.poster; img.onerror = () => img.remove();
+  p.append(img);
+  if (cur && cur.t.id === m.id) p.append(el('span', 'live', 'Teraz leci'));
+  
+  const info = el('div', 'info');
+  info.append(el('strong', '', m.title));
+  
+  if (m.released && m.released !== '—') {
+    info.append(el('span', 'dim', m.released));
+  }
+
+  if (m.imdb && m.imdb !== '—') {
+    info.append(el('div', 'imdb-badge', m.imdb));
+  }
+
+  const meta = m.kind === 'series' ? 'Serial · ' + plural(m.episodes.length) : fmtDur(m.duration);
+  if (meta) info.append(el('span', 'dim', meta));
+  
+  const langs = el('div', 'langs');
+  const seen = new Map(); m.audio.forEach(a => { if (!seen.has(a.code) || a.pl) seen.set(a.code, a.pl); });
+  for (const [code, pl] of seen) langs.append(el('i', 'lang' + (pl ? ' pl' : ''), code));
+  if (langs.children.length) info.append(langs);
+  
+  b.append(p, info);
+  b.onclick = () => m.kind === 'series' ? showTitle(m) : send({ type: 'load', video: m.episodes[0].file });
+  return b;
+}
+
+function showTitle(t) {
+  $('#tTitle').textContent = t.title;
+  $('#tImdb').textContent = t.imdb && t.imdb !== '—' ? `IMDb ${t.imdb}` : '';
+  $('#tReleased').textContent = t.released && t.released !== '—' ? `Premiera: ${t.released}` : '';
+  $('#tSub').textContent = plural(t.episodes.length);
+  
+  const last = localStorage.getItem('last:' + t.id);
+  const box = $('#eps'); box.replaceChildren();
+  const groups = new Map();
+  t.episodes.forEach(e => { if (!groups.has(e.group)) groups.set(e.group, []); groups.get(e.group).push(e); });
+  
+  for (const [name, list] of groups) {
+    const g = el('div', 'group');
+    if (name) g.append(el('h3', '', name));
+    for (const e of list) {
+      const now = cur && cur.file === e.file;
+      const b = el('button', 'ep' + (now ? ' now' : e.file === last ? ' last' : ''));
+      
+      const leftDiv = el('div', 'ep-left');
+      leftDiv.append(el('strong', '', e.name));
+      
+      let metaLine = '';
+      if (e.imdb && e.imdb !== '—') metaLine += `★ ${e.imdb}`;
+      if (e.released && e.released !== '—') metaLine += `  •  ${e.released}`;
+      
+      if (metaLine) {
+        leftDiv.append(el('span', 'dim', metaLine));
+      }
+
+      b.append(leftDiv, el('span', 'tag', now ? 'leci teraz' : e.file === last ? 'ostatnio' : ''));
+      b.onclick = () => send({ type: 'load', video: e.file });
+      g.append(b);
+    }
+    box.append(g);
+  }
+  setView('title', t.poster);
+}
+
+let openSeq = 0;
+function preferredAudio(meta, t) {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('alang:' + t.id)); } catch {}
+  if (saved) {
+    const x = meta.audio.find(a => a.label === saved.label) || meta.audio.find(a => a.code === saved.code);
+    if (x) return x.i;
+  }
+  const pl = meta.audio.find(a => a.pl); if (pl) return pl.i;
+  const def = meta.audio.find(a => a.def); return def ? def.i : 0;
+}
+function preferredSub(meta, t, hasPlAudio) {
+  const saved = localStorage.getItem('asub:' + t.id);
+  if (saved === 'off') return 'off';
+  if (saved === 'ext' && meta.extSub) return 'ext';
+  if (saved && saved.startsWith('code:')) { const x = meta.subs.find(s => s.code === saved.slice(5)); if (x) return String(x.i); }
+  const plSub = meta.subs.find(s => s.pl);
+  return (!hasPlAudio && meta.audio.length && (plSub || meta.extSub)) ? (plSub ? String(plSub.i) : 'ext') : 'off';
+}
+
+async function openMovie(file) {
+  const my = ++openSeq;
+  let t = lib.find(x => x.episodes.some(e => e.file === file));
+  if (!t) { await loadLibrary(); t = lib.find(x => x.episodes.some(e => e.file === file)); }
+  if (!t) return;
+  const meta = await (await fetch('/api/meta?name=' + enc(file))).json();
+  if (my !== openSeq || meta.error) return;
+  cur = { ...meta, t };
+  localStorage.setItem('last:' + t.id, file);
+  const series = t.kind === 'series';
+  $('#title').textContent = t.title;
+  const langs = [...new Set(meta.audio.map(a => a.code))].join(', ');
+  $('#sub').textContent = [series && meta.title, fmtDur(meta.duration), langs && `dźwięk: ${langs}`].filter(Boolean).join(' · ');
+  const idx = t.episodes.findIndex(e => e.file === file);
+  $('#epsBtn').hidden = !series;
+  $('#nextBtn').hidden = idx >= t.episodes.length - 1;
+
+  const aSel = $('#aSel'); aSel.replaceChildren();
+  meta.audio.forEach(a => { const o = el('option', '', a.label); o.value = a.i; aSel.append(o); });
+  if (!meta.audio.length) { const o = el('option', '', 'Ścieżka z pliku'); o.value = 0; aSel.append(o); }
+  aSel.value = preferredAudio(meta, t);
+  const hasPlAudio = meta.audio.some(a => a.pl);
+  const sSel = $('#sSel'); sSel.replaceChildren();
+  const off = el('option', '', 'Wyłączone'); off.value = 'off'; sSel.append(off);
+  meta.subs.forEach(s => { const o = el('option', '', s.label); o.value = s.i; sSel.append(o); });
+  if (meta.extSub) { const o = el('option', '', 'Plik napisów obok filmu'); o.value = 'ext'; sSel.append(o); }
+  sSel.value = preferredSub(meta, t, hasPlAudio);
+
+  $('#warn').textContent = '';
+  showPlay();
+  setSource();
+}
+
+const nextEpisode = () => {
+  if (!cur) return null;
+  const i = cur.t.episodes.findIndex(e => e.file === cur.file);
+  return cur.t.episodes[i + 1] || null;
+};
+
+function applySubs() {
+  v.querySelectorAll('track').forEach(t => t.remove());
+  const k = $('#sSel').value;
+  if (k === 'off' || !cur) return;
+  const t = document.createElement('track');
+  t.kind = 'subtitles'; 
+  t.label = 'Polskie'; 
+  t.srclang = 'pl'; 
+  t.default = true;
+  t.src = `/sub/${enc(cur.file)}`;
+  v.appendChild(t);
+  
+  t.onload = () => {
+    for (const x of v.textTracks) x.mode = 'showing';
+  };
+  setTimeout(() => {
+    for (const x of v.textTracks) x.mode = 'showing';
+  }, 150);
+}
+
+async function setSource() {
+  const my = ++token;
+  const a = +$('#aSel').value || 0;
+  quiet(6000);
+  v.pause();
+  aud.pause();
+
+  v.src = '/video/' + enc(cur.file);
+  aud.src = `/audio?name=${enc(cur.file)}&a=${a}&start=0`;
+  applySubs();
+  
+  v.load();
+  aud.load();
+
+  await new Promise(r => v.addEventListener('loadedmetadata', r, { once: true }));
+  if (my !== token) return;
+  const s = await getState();
+  if (s.video === cur.file) applyTiming(s, 0.2);
+}
+
+volRange.oninput = () => {
+  aud.volume = volRange.value;
+  localStorage.setItem('audioVol', volRange.value);
+};
+
+const savedVol = localStorage.getItem('audioVol');
+if (savedVol !== null) {
+  volRange.value = savedVol;
+  aud.volume = savedVol;
+}
+
+v.addEventListener('play', () => {
+  aud.currentTime = v.currentTime;
+  aud.play().catch(() => {});
+  if (Date.now() > suppressUntil) send({ type: 'play', time: v.currentTime });
+});
+
+v.addEventListener('pause', () => {
+  aud.pause();
+  if (Date.now() > suppressUntil && !v.ended) send({ type: 'pause', time: v.currentTime });
+});
+
+v.addEventListener('seeked', () => {
+  quiet();
+  const a = +$('#aSel').value || 0;
+  aud.src = `/audio?name=${enc(cur.file)}&a=${a}&start=${v.currentTime}`;
+  aud.play().catch(() => {});
+  if (Date.now() > suppressUntil) send({ type: 'seek', time: v.currentTime });
+});
+
+$('#aSel').onchange = () => {
+  const a = cur.audio.find(x => x.i === +$('#aSel').value);
+  if (a) localStorage.setItem('alang:' + cur.t.id, JSON.stringify({ label: a.label, code: a.code }));
+  const aIdx = +$('#aSel').value || 0;
+  aud.src = `/audio?name=${enc(cur.file)}&a=${aIdx}&start=${v.currentTime}`;
+  aud.play().catch(() => {});
+};
+
+$('#sSel').onchange = () => {
+  const k = $('#sSel').value;
+  localStorage.setItem('asub:' + cur.t.id, k);
+  applySubs();
+};
+
+function tryPlay() { 
+  v.play().catch(() => { $('#join').hidden = false; }); 
+}
+
+function applyTiming(s, tol = 0.4) {
+  quiet();
+  if (Math.abs(v.currentTime - s.time) > tol) {
+    v.currentTime = s.time;
+    aud.src = `/audio?name=${enc(cur.file)}&a=${+$('#aSel').value || 0}&start=${s.time}`;
+  }
+  if (s.playing && v.paused) tryPlay();
+  if (!s.playing && !v.paused) { v.pause(); aud.pause(); }
+}
+
+function apply(s) {
+  if (!s.video) {
+    if (!views.play.hidden) {
+      leave();
+      showLib();
+    }
+    cur = null;
+    return;
+  }
+  if (!cur || cur.file !== s.video) return openMovie(s.video);
+  if (views.play.hidden) return;
+  applyTiming(s, 0.2);
+}
+
+function connect() {
+  const es = new EventSource('/events');
+  es.onopen = () => $('#dot').classList.add('on');
+  es.onerror = () => { $('#dot').classList.remove('on'); $('#viewers').textContent = 'rozłączono…'; };
+  es.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.viewers) $('#viewers').textContent = m.viewers === 1 ? 'jesteś sam(a)' : `oglądacie razem (${m.viewers})`;
+    if (m.type === 'state') apply(m.state);
+    else if (m.type === 'end') {
+      leave();
+      cur = null;
+      showLib();
+      toast('Zakończono seans');
+    }
+    else if (m.type === 'load') { toast('Wybrano: ' + m.state.video.split('/').pop().replace(/\.[^.]+$/, '')); openMovie(m.state.video); }
+    else if (['play', 'pause', 'seek'].includes(m.type) && m.from !== myId) {
+      apply(m.state);
+      toast({ play: 'Znajomy: odtwarzanie', pause: 'Znajomy: pauza', seek: 'Znajomy przewinął' }[m.type]);
+    }
+  };
+}
+
+v.addEventListener('ended', () => {
+  const n = nextEpisode();
+  if (n && Date.now() > suppressUntil) send({ type: 'load', video: n.file, after: cur.file });
+});
+
+$('#joinBtn').onclick = async () => { 
+  $('#join').hidden = true; 
+  applyTiming(await getState()); 
+  aud.play().catch(()=>{});
+};
+
+setInterval(async () => {
+  if (!cur || views.play.hidden || v.paused || v.seeking) return;
+  try {
+    const s = await getState();
+    if (s.video === cur.file && s.playing && Math.abs(v.currentTime - s.time) > 1.5) { 
+      quiet(); 
+      v.currentTime = s.time; 
+      aud.src = `/audio?name=${enc(cur.file)}&a=${+$('#aSel').value || 0}&start=${s.time}`;
+      aud.play().catch(()=>{});
+    }
+  } catch {}
+}, 5000);
+
+const leave = () => { quiet(); v.pause(); aud.pause(); };
+$('#back').onclick = () => { leave(); showLib(); };
+$('#tBack').onclick = showLib;
+$('#home').onclick = () => { if (!views.play.hidden) leave(); showLib(); };
+$('#epsBtn').onclick = () => { leave(); showTitle(cur.t); };
+$('#nextBtn').onclick = () => { const n = nextEpisode(); if (n) send({ type: 'load', video: n.file }); };
+
+// Obsługa przycisku zakończenia seansu dla wszystkich
+$('#endSessionBtn').onclick = async () => {
+  leave();
+  await fetch('/api/end', { method: 'POST' }).catch(() => {});
+  cur = null;
+  showLib();
+};
+
+document.querySelectorAll('.resumeBtn').forEach(b => b.onclick = async () => { showPlay(); applyTiming(await getState(), 0.2); });
+
+$('#q').oninput = renderLibrary;
+$('#sortSelect').onchange = renderLibrary;
+
+loadLibrary().then(connect);
+</script>
+</body>
+</html>
