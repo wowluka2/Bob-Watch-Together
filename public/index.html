@@ -1,449 +1,1957 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="pl" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Bob Watch Together</title>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <div id="ambient"></div>
+
+<!-- =====================================================================
+     HEADER
+===================================================================== -->
 <header>
-  <button class="brand" id="home">Bob Watch Together</button>
-  <div id="status"><span id="dot"></span><span id="viewers">łączenie…</span></div>
+  <div class="brand-wrapper">
+    <button class="brand" id="brandBtn">
+      <span class="brand-icon">🍿</span>
+      <span>Bob Watch Together</span>
+    </button>
+    <nav class="nav-links">
+      <button class="nav-link active" id="navHome" data-i18n="home">Strona główna</button>
+      <button class="nav-link" id="navMovies" data-i18n="movies">Filmy</button>
+      <button class="nav-link" id="navSeries" data-i18n="series">Seriale</button>
+    </nav>
+  </div>
+
+  <div class="header-right">
+    <div class="live-pill" id="livePill" hidden>
+      <span class="pulse-dot"></span>
+      <span id="livePillText">Seans na żywo</span>
+    </div>
+
+    <button class="theme-btn" id="themeBtn" title="Zmień motyw / Switch theme">
+      <span id="themeIcon">🌙</span>
+    </button>
+
+    <button class="lang-btn" id="langBtn" title="Zmień język / Switch language">
+      <span id="langFlag">🇵🇱</span> <span id="langLabel">PL</span>
+    </button>
+
+    <div style="position: relative;">
+      <button class="profile-pill" id="profileBtn">
+        <span class="profile-avatar-sm" id="activeAvatar">🍿</span>
+        <span id="activeProfileName">Główny</span>
+        <span style="font-size: 10px; color: var(--text-dim);">▼</span>
+      </button>
+
+      <div class="dropdown-menu" id="profileDropdown" hidden>
+        <div class="dropdown-header">
+          <span data-i18n="activeProfile">Aktywny profil</span>
+          <strong id="dropdownProfName">Główny</strong>
+        </div>
+        <button class="dropdown-item" id="switchProfBtn">
+          <span>👥</span> <span data-i18n="switchProfile">Zmień profil</span>
+        </button>
+        <button class="dropdown-item" id="manageProfBtn">
+          <span>⚙️</span> <span data-i18n="manageProfiles">Zarządzaj profilami</span>
+        </button>
+        <div class="dropdown-divider"></div>
+        <div class="cache-info-box">
+          <div class="cache-info-text">
+            <span data-i18n="cacheStorage">Pamięć (.cache):</span>
+            <strong id="cacheSizeText">...</strong>
+          </div>
+          <button class="cache-clean-btn" id="clearCacheBtn" data-i18n="clearCache">Wyczyść pamięć</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </header>
 
-<main id="libView">
-  <div class="bar">
-    <h2>Biblioteka</h2>
-  </div>
-  <div class="filter-bar">
-    <input id="q" type="search" placeholder="Szukaj filmu lub serialu…" aria-label="Szukaj filmu">
-    <select id="sortSelect" aria-label="Sortuj według">
-      <option value="nameAsc">Nazwa: A do Z</option>
-      <option value="nameDesc">Nazwa: Z do A</option>
-      <option value="dateNew">Data wydania: Najnowsze</option>
-      <option value="dateOld">Data wydania: Najstarsze</option>
-      <option value="imdbDesc">Ocena IMDb: Od najwyższej</option>
-    </select>
-  </div>
-
-  <div class="resume" hidden><span class="resumeText"></span><button class="primary resumeBtn">Wróć do seansu</button></div>
-  <p id="libNote">Skanuję pliki…</p>
-  <div id="grid"></div>
-</main>
-
-<main id="titleView" hidden>
-  <div class="top">
-    <button class="ghost" id="tBack">‹ Biblioteka</button>
-    <div>
-      <h2 id="tTitle"></h2>
-      <div style="display:flex; gap:10px; align-items:center; margin-top:6px;">
-        <div id="tImdb" class="imdb-badge"></div>
-        <span id="tReleased" class="dim" style="font-size:13px;"></span>
+<!-- =====================================================================
+     VIEW 1: BROWSE / HOME VIEW (#/)
+===================================================================== -->
+<main id="browseView">
+  <section class="hero-spotlight" id="heroSpotlight" hidden>
+    <img class="hero-backdrop-img" id="heroImg" alt="">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <h1 class="hero-title" id="heroTitle"></h1>
+      <div class="hero-meta">
+        <span class="badge-imdb" id="heroImdb"></span>
+        <span class="badge-pill" id="heroYear"></span>
+        <span class="badge-pill" id="heroDuration"></span>
+        <span class="badge-pill pl" id="heroAudioPl" hidden data-i18n="plVoiceover">Lektor PL</span>
       </div>
-      <p id="tSub" style="margin-top:4px;"></p>
+      <p class="hero-plot" id="heroPlot"></p>
+      <div class="hero-actions">
+        <button class="btn btn-primary" id="heroPlayBtn">
+          <span>▶</span> <span data-i18n="playNow">Oglądaj teraz</span>
+        </button>
+        <button class="btn btn-ghost" id="heroDetailsBtn">
+          <span>ℹ</span> <span data-i18n="moreInfo">Więcej informacji</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section id="continueSection" hidden>
+    <h3 class="section-heading">
+      <span>⏱️</span> <span data-i18n="continueWatching">Kontynuuj oglądanie</span>
+    </h3>
+    <div class="continue-grid" id="continueGrid"></div>
+  </section>
+
+  <div class="browse-bar">
+    <div class="category-tabs">
+      <button class="cat-tab active" data-filter="all" data-i18n="all">Wszystko</button>
+      <button class="cat-tab" data-filter="movie" data-i18n="movies">Filmy</button>
+      <button class="cat-tab" data-filter="series" data-i18n="series">Seriale</button>
+    </div>
+
+    <div class="filter-controls">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input id="searchInput" type="search" placeholder="Szukaj filmów i seriali…" aria-label="Search">
+      </div>
+      <select class="sort-select" id="sortSelect" aria-label="Sort">
+        <option value="imdbDesc" data-i18n="sortImdbDesc">Ocena IMDb: Od najwyższej</option>
+        <option value="dateNew" data-i18n="sortDateNew">Premiera: Najnowsze</option>
+        <option value="dateOld" data-i18n="sortDateOld">Premiera: Najstarsze</option>
+        <option value="nameAsc" data-i18n="sortNameAsc">Nazwa: A do Z</option>
+        <option value="nameDesc" data-i18n="sortNameDesc">Nazwa: Z do A</option>
+      </select>
     </div>
   </div>
-  <div class="resume" hidden><span class="resumeText"></span><button class="primary resumeBtn">Wróć do seansu</button></div>
-  <div id="eps"></div>
+
+  <p id="browseNote" style="color: var(--text-dim); margin-bottom: 16px;"></p>
+  <div class="media-grid" id="mediaGrid"></div>
 </main>
 
-<main id="playView" hidden>
-  <div class="top">
-    <button class="ghost" id="back">‹ Biblioteka</button>
-    <div><h2 id="title"></h2><p id="sub"></p></div>
-    <div id="seriesBar" style="display: flex; gap: 8px; align-items: center;">
-      <button class="ghost" id="epsBtn" hidden>Odcinki</button>
-      <button class="ghost" id="nextBtn" hidden>Następny ›</button>
-      <!-- Przycisk zakończenia seansu -->
-      <button class="ghost" id="endSessionBtn" style="border-color: #c0554f; color: #ff6b6b;">Zakończ seans</button>
+<!-- =====================================================================
+     VIEW 2: DEDICATED TITLE SUBPAGE (#/title/:id)
+===================================================================== -->
+<main id="subpageView" hidden>
+  <button class="subpage-back" id="subpageBackBtn">
+    <span>‹</span> <span data-i18n="backToBrowse">Wróć do biblioteki</span>
+  </button>
+
+  <div class="title-hero">
+    <div class="title-hero-backdrop" id="subBackdrop"></div>
+    <div class="title-poster-col">
+      <div class="title-hero-poster">
+        <img id="subPosterImg" alt="">
+      </div>
+      <button class="btn btn-ghost change-poster-btn" id="changePosterBtn">
+        <span>🖼️</span> <span data-i18n="changePoster">Zmień plakat</span>
+      </button>
+      <input type="file" id="posterFileInput" accept="image/*" hidden>
+    </div>
+
+    <div class="title-hero-details">
+      <h1 class="title-main-heading" id="subTitle"></h1>
+      <div class="title-meta-row">
+        <span class="badge-imdb" id="subImdb"></span>
+        <span class="badge-pill" id="subYear"></span>
+        <span class="badge-pill" id="subDuration"></span>
+        <span class="badge-pill" id="subKind"></span>
+        <span class="badge-watched" id="subMovieWatchedBadge" hidden>✓ Obejrzano</span>
+      </div>
+
+      <div class="title-badges" id="subAudioBadges"></div>
+
+      <div class="title-cta-row">
+        <button class="btn btn-primary" id="subSoloPlayBtn">
+          <span>▶</span> <span id="subSoloPlayText" data-i18n="playSolo">Oglądaj solo</span>
+        </button>
+        <button class="btn btn-secondary" id="subPartyPlayBtn">
+          <span>👥</span> <span id="subPartyPlayText" data-i18n="watchParty">Wspólny seans</span>
+        </button>
+        <button class="btn btn-ghost" id="subToggleWatchedBtn" hidden>
+          <span id="subToggleWatchedIcon">✓</span> <span id="subToggleWatchedText">Oznacz jako obejrzane</span>
+        </button>
+      </div>
+
+      <div class="title-plot-box">
+        <div class="title-plot-heading" data-i18n="synopsis">Opis fabuły (IMDb)</div>
+        <p class="title-plot-text" id="subPlot"></p>
+      </div>
+
+      <div class="title-specs-grid">
+        <div class="spec-item" id="specGenreWrap">
+          <span data-i18n="genre">Gatunek</span>
+          <strong id="subGenre">—</strong>
+        </div>
+        <div class="spec-item" id="specDirectorWrap">
+          <span data-i18n="director">Reżyseria</span>
+          <strong id="subDirector">—</strong>
+        </div>
+        <div class="spec-item" id="specActorsWrap">
+          <span data-i18n="cast">Obsada</span>
+          <strong id="subActors">—</strong>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="screen">
+
+  <section id="seriesEpisodesBlock" hidden>
+    <div class="season-selector" id="seasonTabs"></div>
+    <div class="episodes-list" id="episodesList"></div>
+  </section>
+</main>
+
+<!-- =====================================================================
+     VIEW 3: CINEMA PLAYER VIEW (#/watch?v=...)
+===================================================================== -->
+<main id="playView" hidden>
+  <div class="player-top-bar">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <button class="btn btn-ghost" id="playerBackBtn">‹ <span data-i18n="back">Wróć</span></button>
+      <div class="player-title-info">
+        <h2 id="playerTitle"></h2>
+        <p id="playerSubtitle"></p>
+      </div>
+    </div>
+
+    <div class="player-top-actions">
+      <button class="btn btn-ghost" id="playerModeBtn" style="font-size: 13px;">
+        <span id="playerModeIcon">👤</span> <span id="playerModeText">Tryb solo</span>
+      </button>
+
+      <span style="font-size: 13px; color: var(--text-muted); align-self: center;" id="viewersCount"></span>
+      <button class="btn btn-ghost" id="playerNextBtn" hidden data-i18n="nextEpisode">Następny ›</button>
+      <button class="btn btn-danger" id="playerEndBtn" data-i18n="endSession">Zakończ seans</button>
+    </div>
+  </div>
+
+  <div class="player-screen">
     <video id="v" muted playsinline preload="auto" controls></video>
     <audio id="aud" preload="auto"></audio>
-    <div class="veil" id="join" hidden><div><p>Kliknij, aby dołączyć do wspólnego seansu</p><button class="primary" id="joinBtn">Dołącz</button></div></div>
+    <div class="player-veil" id="joinPrompt" hidden>
+      <div>
+        <p data-i18n="joinAudioPrompt">Kliknij, aby dołączyć do wspólnego seansu</p>
+        <button class="btn btn-primary" id="joinBtn" data-i18n="join">Dołącz</button>
+      </div>
+    </div>
   </div>
-  <div class="opts">
-    <label>Dźwięk<select id="aSel"></select></label>
-    <label>Głośność<input type="range" id="volRange" min="0" max="1" step="0.01" value="1"></label>
-    <label>Napisy<select id="sSel"></select></label>
+
+  <div class="player-controls-panel">
+    <label>
+      <span data-i18n="audioTrack">Ścieżka dźwiękowa</span>
+      <select id="aSel"></select>
+    </label>
+    <label>
+      <span data-i18n="volume">Głośność</span>
+      <input type="range" id="volRange" min="0" max="1" step="0.01" value="1">
+    </label>
+    <label>
+      <span data-i18n="subtitles">Napisy</span>
+      <select id="sSel"></select>
+    </label>
+    <label>
+      <span><span data-i18n="audioOffset">Przesunięcie dźwięku</span>: <b id="offVal">0 ms</b></span>
+      <input type="range" id="offRange" min="-1000" max="1000" step="10" value="0">
+    </label>
+    <label>
+      <span><span data-i18n="subDelay">Opóźnienie napisów</span>: <b id="subDelayVal">0 s</b></span>
+      <input type="range" id="subDelay" min="-10" max="10" step="0.1" value="0">
+    </label>
   </div>
-  <p id="warn"></p>
+  <p id="audioNote" style="font-size: 13px; color: var(--text-muted); margin-top: 10px;"></p>
+  <p id="playerWarn" style="font-size: 13px; color: var(--danger); margin-top: 6px;"></p>
 </main>
+
+<!-- =====================================================================
+     PROFILES SELECTION MODAL
+===================================================================== -->
+<div class="modal-overlay" id="profilesModal">
+  <div class="profiles-modal" id="profilesModalContent">
+    <h2 class="profiles-title" data-i18n="whoIsWatching">Kto ogląda?</h2>
+    <div class="profiles-row" id="profilesRow"></div>
+    <button class="btn btn-ghost" id="manageProfilesToggle" data-i18n="manageProfiles">Zarządzaj profilami</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editProfileModal" hidden>
+  <div class="dialog-box">
+    <h3 id="profileDialogTitle" data-i18n="addProfile">Dodaj profil</h3>
+    <div>
+      <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;" data-i18n="profileName">Nazwa profilu</label>
+      <input type="text" id="profNameInput" placeholder="Imię profilu" maxlength="20">
+    </div>
+    <div>
+      <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 8px;" data-i18n="chooseAvatar">Wybierz awatar</label>
+      <div class="avatar-grid" id="avatarGrid"></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-danger" id="deleteProfileBtn" hidden data-i18n="delete">Usuń</button>
+      <button class="btn btn-ghost" id="cancelProfileBtn" data-i18n="cancel">Anuluj</button>
+      <button class="btn btn-primary" id="saveProfileBtn" data-i18n="save">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="posterModal" hidden>
+  <div class="dialog-box">
+    <h3 data-i18n="changePoster">Zmień plakat</h3>
+    <div>
+      <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;" data-i18n="posterUpload">Wybierz plik z urządzenia</label>
+      <button class="btn btn-primary" style="width: 100%;" id="modalChooseFileBtn" data-i18n="chooseFile">Wybierz plik obrazu (JPG/PNG)</button>
+    </div>
+    <div style="text-align: center; color: var(--text-dim); font-size: 12px;" data-i18n="or">LUB</div>
+    <div>
+      <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;" data-i18n="posterUrl">Wklej adres URL obrazka</label>
+      <input type="text" id="posterUrlInput" placeholder="https://example.com/poster.jpg">
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" id="cancelPosterModalBtn" data-i18n="cancel">Anuluj</button>
+      <button class="btn btn-primary" id="savePosterUrlBtn" data-i18n="save">Zapisz</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
+<!-- =====================================================================
+     CLIENT JAVASCRIPT
+===================================================================== -->
 <script>
 const $ = s => document.querySelector(s);
-const v = $('#v');
-const aud = $('#aud');
-const volRange = $('#volRange');
-const myId = Math.random().toString(36).slice(2);
 const enc = encodeURIComponent;
-let lib = [], hasFfmpeg = true, cur = null, token = 0, suppressUntil = 0;
+const myId = Math.random().toString(36).slice(2);
+
+function fmtTime(sec) {
+  if (!sec || isNaN(sec)) return '0:00';
+  sec = Math.floor(sec);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function fmtTimeWords(sec) {
+  if (!sec || isNaN(sec)) return '0 min';
+  sec = Math.floor(sec);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (h > 0) {
+    return curLang === 'pl' ? `${h} godz. ${m} min` : `${h}h ${m}m`;
+  }
+  return curLang === 'pl' ? `${m} min` : `${m}m`;
+}
+
+function fmtDur(s) {
+  if (!s) return '';
+  return fmtTimeWords(s);
+}
+
+function fmtSec(x) { return (x > 0 ? '+' : '') + (+x).toFixed(1) + ' s'; }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+let suppressUntil = 0;
 const quiet = (ms = 900) => { suppressUntil = Math.max(suppressUntil, Date.now() + ms); };
-const send = a => fetch('/api/action', { method: 'POST', body: JSON.stringify({ ...a, id: myId }) }).catch(() => {});
-const getState = async () => (await fetch('/api/state')).json();
-function toast(t) { const e = $('#toast'); e.textContent = t; e.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('show'), 2400); }
-function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
-const hue = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
-const fmtDur = s => { if (!s) return ''; const m = Math.round(s / 60); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
 
-const views = { lib: $('#libView'), title: $('#titleView'), play: $('#playView') };
-const plural = n => n === 1 ? '1 odcinek' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? `${n} odcinki` : `${n} odcinków`;
-function setView(name, poster) {
-  for (const k in views) views[k].hidden = k !== name;
-  $('#ambient').style.backgroundImage = poster ? `url("${poster}")` : '';
-  updateResume();
+function toast(msg) {
+  const el = $('#toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.remove('show'), 2600);
 }
-function updateResume() {
-  document.querySelectorAll('.resume').forEach(r => {
-    r.hidden = !cur;
-    if (cur) r.querySelector('.resumeText').textContent = 'Seans trwa: ' + (cur.t.kind === 'series' ? `${cur.t.title}, ${cur.title}` : cur.t.title);
+
+const I18N = {
+  pl: {
+    home: "Strona główna",
+    movies: "Filmy",
+    series: "Seriale",
+    all: "Wszystko",
+    playNow: "Oglądaj teraz",
+    moreInfo: "Więcej informacji",
+    continueWatching: "Kontynuuj oglądanie",
+    searchPlaceholder: "Szukaj filmów i seriali…",
+    sortImdbDesc: "Ocena IMDb: Od najwyższej",
+    sortDateNew: "Premiera: Najnowsze",
+    sortDateOld: "Premiera: Najstarsze",
+    sortNameAsc: "Nazwa: A do Z",
+    sortNameDesc: "Nazwa: Z do A",
+    backToBrowse: "Wróć do biblioteki",
+    back: "Wróć",
+    play: "Odtwórz",
+    playSolo: "Oglądaj solo",
+    watchParty: "Wspólny seans",
+    startWatchParty: "Rozpocznij wspólny seans",
+    switchToSolo: "Przełącz na tryb solo",
+    soloMode: "Tryb solo",
+    partyMode: "Wspólny seans (zsynchronizowany)",
+    resume: "Wznów",
+    watchAgain: "Oglądaj ponownie",
+    markWatched: "Oznacz jako obejrzane",
+    markUnwatched: "Oznacz jako nieobejrzane",
+    watched: "Obejrzano",
+    inProgress: "W trakcie",
+    timeLeft: "Pozostało",
+    playEpisode: "Odtwórz odcinek",
+    joinLiveSession: "Dołącz do wspólnego seansu",
+    synopsis: "Opis fabuły (IMDb)",
+    genre: "Gatunek",
+    director: "Reżyseria",
+    cast: "Obsada",
+    season: "Sezon",
+    seasons: "sezony",
+    episodes: "odcinków",
+    episode: "odcinek",
+    nextEpisode: "Następny odcinek ›",
+    endSession: "Zakończ seans",
+    audioTrack: "Ścieżka dźwiękowa",
+    volume: "Głośność",
+    subtitles: "Napisy",
+    subtitlesOff: "Wyłączone",
+    audioOffset: "Przesunięcie dźwięku",
+    subDelay: "Opóźnienie napisów",
+    joinAudioPrompt: "Kliknij, aby dołączyć do wspólnego seansu",
+    join: "Dołącz",
+    whoIsWatching: "Kto ogląda?",
+    manageProfiles: "Zarządzaj profilami",
+    done: "Gotowe",
+    addProfile: "Dodaj profil",
+    editProfile: "Edytuj profil",
+    profileName: "Nazwa profilu",
+    chooseAvatar: "Wybierz awatar",
+    save: "Zapisz",
+    cancel: "Anuluj",
+    delete: "Usuń",
+    activeProfile: "Aktywny profil",
+    switchProfile: "Zmień profil",
+    cacheStorage: "Pamięć (.cache):",
+    clearCache: "Wyczyść pamięć",
+    cacheCleared: "Wyczyszczono pamięć podręczną (zwolniono {size})",
+    changePoster: "Zmień plakat",
+    posterUpload: "Wybierz plik z urządzenia",
+    chooseFile: "Wybierz plik obrazu (JPG/PNG)",
+    posterUrl: "Wklej adres URL obrazka",
+    or: "LUB",
+    posterUpdated: "Plakat został zaktualizowany!",
+    plVoiceover: "Lektor PL",
+    watchingAlone: "oglądasz sam(a)",
+    watchingTogether: "oglądacie razem ({n})",
+    disconnected: "rozłączono…",
+    emptyLib: "Biblioteka jest pusta.",
+    noResults: "Brak wyników wyszukiwania.",
+    loadingSubs: "Wczytuję napisy…",
+    subError: "Nie udało się wczytać napisów.",
+    sessionEndedToast: "Zakończono wspólny seans",
+    friendPlay: "Wspólny seans: odtwarzanie",
+    friendPause: "Wspólny seans: pauza",
+    friendSeek: "Wspólny seans: przewinięto",
+    preparingAudio: "Przygotowuję dźwięk do szybkiego przewijania… {p}%",
+    nowPlayingRoom: "Leci w seansie",
+    movie: "Film"
+  },
+  en: {
+    home: "Home",
+    movies: "Movies",
+    series: "TV Shows",
+    all: "All",
+    playNow: "Watch Now",
+    moreInfo: "More Info",
+    continueWatching: "Continue Watching",
+    searchPlaceholder: "Search movies & shows…",
+    sortImdbDesc: "IMDb Rating: Highest",
+    sortDateNew: "Release: Newest",
+    sortDateOld: "Release: Oldest",
+    sortNameAsc: "Title: A to Z",
+    sortNameDesc: "Title: Z to A",
+    backToBrowse: "Back to Library",
+    back: "Back",
+    play: "Play",
+    playSolo: "Watch Solo",
+    watchParty: "Watch Together",
+    startWatchParty: "Start Watch Party",
+    switchToSolo: "Switch to Solo Mode",
+    soloMode: "Solo Mode",
+    partyMode: "Watch Together (Synced)",
+    resume: "Resume",
+    watchAgain: "Watch Again",
+    markWatched: "Mark as Watched",
+    markUnwatched: "Mark as Unwatched",
+    watched: "Watched",
+    inProgress: "In Progress",
+    timeLeft: "Left",
+    playEpisode: "Play Episode",
+    joinLiveSession: "Join Watch Session",
+    synopsis: "Synopsis (IMDb)",
+    genre: "Genre",
+    director: "Director",
+    cast: "Cast",
+    season: "Season",
+    seasons: "seasons",
+    episodes: "episodes",
+    episode: "episode",
+    nextEpisode: "Next Episode ›",
+    endSession: "End Session",
+    audioTrack: "Audio Track",
+    volume: "Volume",
+    subtitles: "Subtitles",
+    subtitlesOff: "Off",
+    audioOffset: "Audio Offset",
+    subDelay: "Subtitle Delay",
+    joinAudioPrompt: "Click to join the watch session",
+    join: "Join",
+    whoIsWatching: "Who's watching?",
+    manageProfiles: "Manage Profiles",
+    done: "Done",
+    addProfile: "Add Profile",
+    editProfile: "Edit Profile",
+    profileName: "Profile Name",
+    chooseAvatar: "Choose Avatar",
+    save: "Save",
+    cancel: "Cancel",
+    delete: "Delete",
+    activeProfile: "Active Profile",
+    switchProfile: "Switch Profile",
+    cacheStorage: "Cache (.cache):",
+    clearCache: "Clear Cache",
+    cacheCleared: "Cache cleared (freed {size})",
+    changePoster: "Change Poster",
+    posterUpload: "Select image from device",
+    chooseFile: "Choose image file (JPG/PNG)",
+    posterUrl: "Paste image URL",
+    or: "OR",
+    posterUpdated: "Poster updated successfully!",
+    plVoiceover: "PL Audio",
+    watchingAlone: "watching alone",
+    watchingTogether: "watching together ({n})",
+    disconnected: "disconnected…",
+    emptyLib: "Library is empty.",
+    noResults: "No results found.",
+    loadingSubs: "Loading subtitles…",
+    subError: "Failed to load subtitles.",
+    sessionEndedToast: "Watch session ended",
+    friendPlay: "Watch Party: Playing",
+    friendPause: "Watch Party: Paused",
+    friendSeek: "Watch Party: Sought",
+    preparingAudio: "Preparing fast-seek audio… {p}%",
+    nowPlayingRoom: "Playing in Party",
+    movie: "Movie"
+  }
+};
+
+function detectLanguage() {
+  const saved = localStorage.getItem('bob_lang');
+  if (saved === 'pl' || saved === 'en') return saved;
+  const browser = (navigator.language || navigator.userLanguage || 'pl').toLowerCase();
+  return browser.startsWith('pl') ? 'pl' : 'en';
+}
+
+let curLang = detectLanguage();
+const t = key => (I18N[curLang] && I18N[curLang][key]) || (I18N['pl'][key]) || key;
+
+function setLanguage(lang) {
+  curLang = lang;
+  localStorage.setItem('bob_lang', lang);
+  if ($('#langFlag')) $('#langFlag').textContent = lang === 'pl' ? '🇵🇱' : '🇬🇧';
+  if ($('#langLabel')) $('#langLabel').textContent = lang.toUpperCase();
+  document.documentElement.lang = lang;
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (I18N[curLang] && I18N[curLang][k]) el.textContent = I18N[curLang][k];
+  });
+  if ($('#searchInput')) $('#searchInput').placeholder = t('searchPlaceholder');
+
+  renderCurrentView();
+}
+
+function detectTheme() {
+  const saved = localStorage.getItem('bob_theme');
+  return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+}
+
+let curTheme = detectTheme();
+
+function setTheme(theme) {
+  curTheme = theme;
+  localStorage.setItem('bob_theme', theme);
+  document.documentElement.setAttribute('data-theme', theme);
+  if ($('#themeIcon')) $('#themeIcon').textContent = theme === 'dark' ? '🌙' : '☀️';
+}
+
+let lib = [], cur = null, token = 0;
+let profiles = [
+  { id: 'prof_main', name: 'Główny', avatar: '🍿', color: '#00a8e1', history: {} },
+  { id: 'prof_bob', name: 'Bob', avatar: '🎬', color: '#e50914', history: {} }
+];
+let activeProfile = profiles[0];
+let isManagingProfiles = false, editingProfId = null;
+let currentFilter = 'all';
+let cacheStats = null;
+let clientWatchMode = 'solo';
+let partyState = null;
+
+const AVATARS = ['🍿', '🎬', '🚀', '🐺', '👑', '🧙‍♂️', '🐱', '🎮', '🍕', '👻', '🕶️', '🤖'];
+
+const send = a => fetch('/api/action', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    ...a,
+    id: myId,
+    profileId: activeProfile ? activeProfile.id : null,
+    profileName: activeProfile ? activeProfile.name : 'Gość',
+    mode: clientWatchMode
+  })
+}).catch(() => {});
+
+const getState = async () => (await fetch('/api/state')).json();
+
+async function loadProfiles() {
+  try {
+    const cached = localStorage.getItem('bob_profiles_cache');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length) profiles = parsed;
+    }
+  } catch {}
+
+  const savedId = localStorage.getItem('bob_profile_id');
+  activeProfile = profiles.find(p => p.id === savedId) || profiles[0];
+
+  showProfilesModal(true);
+
+  try {
+    const res = await (await fetch('/api/profiles')).json();
+    if (Array.isArray(res) && res.length) {
+      profiles = res;
+      localStorage.setItem('bob_profiles_cache', JSON.stringify(res));
+      activeProfile = profiles.find(p => p.id === savedId) || profiles[0];
+      const modal = $('#profilesModal');
+      if (modal && !modal.hidden) {
+        renderProfilesList(true);
+      }
+    }
+  } catch {}
+}
+
+function updateProfileUI() {
+  if (!activeProfile) return;
+  if ($('#activeAvatar')) $('#activeAvatar').textContent = activeProfile.avatar || '🍿';
+  if ($('#activeProfileName')) $('#activeProfileName').textContent = activeProfile.name || 'Główny';
+  if ($('#dropdownProfName')) $('#dropdownProfName').textContent = activeProfile.name || 'Główny';
+  renderContinueWatching();
+  renderCurrentView();
+}
+
+function showProfilesModal(isStartup = false) {
+  isManagingProfiles = false;
+  const toggleBtn = $('#manageProfilesToggle');
+  if (toggleBtn) {
+    toggleBtn.textContent = t('manageProfiles');
+    toggleBtn.onclick = () => {
+      isManagingProfiles = !isManagingProfiles;
+      toggleBtn.textContent = isManagingProfiles ? t('done') : t('manageProfiles');
+      renderProfilesList();
+    };
+  }
+  const modal = $('#profilesModal');
+  if (modal) {
+    modal.hidden = false;
+    modal.style.opacity = '1';
+  }
+  const content = $('#profilesModalContent');
+  if (content) content.style.transform = 'scale(1)';
+  renderProfilesList(isStartup);
+}
+
+function renderProfilesList(isStartup = false) {
+  const row = $('#profilesRow');
+  if (!row) return;
+  row.replaceChildren();
+
+  profiles.forEach(p => {
+    const card = document.createElement('button');
+    card.className = 'profile-card';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'profile-avatar-big';
+    avatar.textContent = p.avatar || '🍿';
+    avatar.style.borderColor = p.color || 'transparent';
+
+    const name = document.createElement('span');
+    name.className = 'profile-card-name';
+    name.textContent = p.name;
+
+    if (isManagingProfiles) {
+      const editBtn = document.createElement('span');
+      editBtn.className = 'profile-edit-btn';
+      editBtn.textContent = '✎';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        openEditProfileDialog(p);
+      };
+      card.appendChild(editBtn);
+    }
+
+    card.appendChild(avatar);
+    card.appendChild(name);
+
+    card.onclick = () => {
+      if (isManagingProfiles) {
+        openEditProfileDialog(p);
+      } else {
+        card.classList.add('selected-anim');
+        document.querySelectorAll('.profile-card').forEach(c => {
+          if (c !== card) c.style.opacity = '0.25';
+        });
+
+        setTimeout(() => {
+          activeProfile = p;
+          localStorage.setItem('bob_profile_id', p.id);
+          updateProfileUI();
+
+          const modal = $('#profilesModal');
+          if (modal) modal.style.opacity = '0';
+          setTimeout(() => {
+            if (modal) modal.hidden = true;
+            card.classList.remove('selected-anim');
+            document.querySelectorAll('.profile-card').forEach(c => c.style.opacity = '1');
+            document.body.classList.add('app-reveal');
+            setTimeout(() => document.body.classList.remove('app-reveal'), 600);
+          }, 350);
+        }, 280);
+      }
+    };
+
+    row.appendChild(card);
+  });
+
+  const addCard = document.createElement('button');
+  addCard.className = 'profile-card';
+  const addAvatar = document.createElement('div');
+  addAvatar.className = 'profile-avatar-big add-profile-avatar';
+  addAvatar.textContent = '+';
+  const addName = document.createElement('span');
+  addName.className = 'profile-card-name';
+  addName.textContent = t('addProfile');
+  addCard.appendChild(addAvatar);
+  addCard.appendChild(addName);
+  addCard.onclick = () => openEditProfileDialog(null);
+  row.appendChild(addCard);
+}
+
+function openEditProfileDialog(p) {
+  editingProfId = p ? p.id : null;
+  $('#profileDialogTitle').textContent = p ? t('editProfile') : t('addProfile');
+  $('#profNameInput').value = p ? p.name : '';
+  $('#deleteProfileBtn').hidden = !p || profiles.length <= 1;
+
+  const grid = $('#avatarGrid');
+  grid.replaceChildren();
+  let selectedAvatar = p ? p.avatar : AVATARS[0];
+
+  AVATARS.forEach(av => {
+    const opt = document.createElement('div');
+    opt.className = 'avatar-option' + (av === selectedAvatar ? ' selected' : '');
+    opt.textContent = av;
+    opt.onclick = () => {
+      document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      selectedAvatar = av;
+    };
+    grid.appendChild(opt);
+  });
+
+  $('#saveProfileBtn').onclick = async () => {
+    const name = $('#profNameInput').value.trim() || 'Profil';
+    if (editingProfId) {
+      await fetch(`/api/profiles/${editingProfId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, avatar: selectedAvatar })
+      });
+    } else {
+      await fetch('/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, avatar: selectedAvatar })
+      });
+    }
+    $('#editProfileModal').hidden = true;
+    await loadProfilesSilently();
+    renderProfilesList();
+    updateProfileUI();
+  };
+
+  $('#deleteProfileBtn').onclick = async () => {
+    if (!editingProfId) return;
+    if (confirm(curLang === 'pl' ? 'Czy na pewno chcesz usunąć ten profil?' : 'Are you sure you want to delete this profile?')) {
+      await fetch(`/api/profiles/${editingProfId}`, { method: 'DELETE' });
+      $('#editProfileModal').hidden = true;
+      await loadProfilesSilently();
+      renderProfilesList();
+      updateProfileUI();
+    }
+  };
+
+  $('#cancelProfileBtn').onclick = () => { $('#editProfileModal').hidden = true; };
+  $('#editProfileModal').hidden = false;
+}
+
+async function loadProfilesSilently() {
+  try {
+    const res = await (await fetch('/api/profiles')).json();
+    if (Array.isArray(res) && res.length) {
+      profiles = res;
+      activeProfile = profiles.find(p => p.id === activeProfile?.id) || profiles[0];
+    }
+  } catch {}
+}
+
+async function toggleWatched(file, title, season, episode, epName, duration) {
+  if (!activeProfile) return;
+  activeProfile.history = activeProfile.history || {};
+  const curH = activeProfile.history[file];
+  const newFinished = !(curH && curH.finished);
+
+  activeProfile.history[file] = {
+    file,
+    title: title || (curH && curH.title) || '',
+    season: season || (curH && curH.season) || 1,
+    episode: episode || (curH && curH.episode) || 1,
+    epName: epName || (curH && curH.epName) || '',
+    time: newFinished ? (duration || (curH && curH.duration) || 100) : 0,
+    duration: duration || (curH && curH.duration) || 0,
+    updatedAt: Date.now(),
+    finished: newFinished
+  };
+
+  fetch(`/api/profiles/${activeProfile.id}/toggle-watched`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file, title, duration, finished: newFinished })
+  }).catch(() => {});
+
+  renderContinueWatching();
+  if (!$('#subpageView').hidden && currentSubItem) {
+    renderSubpageContent(currentSubItem);
+  }
+}
+
+function saveWatchProgress(forceFinished = false) {
+  if (!cur || !activeProfile || !v) return;
+  const currentEp = (cur.t && cur.t.episodes) ? cur.t.episodes.find(e => e.file === cur.file) : null;
+  const dur = v.duration || cur.duration || 0;
+  const curTime = v.currentTime || 0;
+  const isFinished = forceFinished || (dur > 0 && curTime >= (dur - 60));
+
+  activeProfile.history = activeProfile.history || {};
+  activeProfile.history[cur.file] = {
+    file: cur.file,
+    title: (cur.t && cur.t.title) || cur.title || '',
+    season: currentEp ? currentEp.season : 1,
+    episode: currentEp ? currentEp.episode : 1,
+    epName: currentEp ? currentEp.name : (cur.title || ''),
+    time: isFinished ? dur : curTime,
+    duration: dur,
+    updatedAt: Date.now(),
+    finished: isFinished
+  };
+
+  fetch(`/api/profiles/${activeProfile.id}/history`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(activeProfile.history[cur.file])
+  }).catch(() => {});
+}
+
+async function refreshCacheStats() {
+  try {
+    cacheStats = await (await fetch('/api/cache')).json();
+    $('#cacheSizeText').textContent = cacheStats.formatted || '0 B';
+  } catch {}
+}
+
+function handleRoute() {
+  const hash = window.location.hash || '#/';
+
+  if (hash.startsWith('#/title/')) {
+    const titleId = decodeURIComponent(hash.slice(8));
+    showTitleSubpage(titleId);
+  } else if (hash.startsWith('#/watch')) {
+    const u = new URL(hash.slice(1), window.location.href);
+    const video = u.searchParams.get('v');
+    const mode = u.searchParams.get('mode') || 'solo';
+    clientWatchMode = mode;
+    if (video) openVideo(video);
+  } else if (hash === '#/movies') {
+    currentFilter = 'movie';
+    updateCategoryTabs();
+    showBrowseView();
+  } else if (hash === '#/series') {
+    currentFilter = 'series';
+    updateCategoryTabs();
+    showBrowseView();
+  } else {
+    currentFilter = 'all';
+    updateCategoryTabs();
+    showBrowseView();
+  }
+}
+
+function updateCategoryTabs() {
+  document.querySelectorAll('.cat-tab').forEach(t => {
+    t.classList.toggle('active', t.getAttribute('data-filter') === currentFilter);
+  });
+  document.querySelectorAll('.nav-link').forEach(l => {
+    l.classList.remove('active');
+    if (currentFilter === 'movie' && l.id === 'navMovies') l.classList.add('active');
+    else if (currentFilter === 'series' && l.id === 'navSeries') l.classList.add('active');
+    else if (currentFilter === 'all' && l.id === 'navHome') l.classList.add('active');
   });
 }
-function showLib() { setView('lib'); loadLibrary(); }
-function showPlay() { setView('play', cur && cur.t.poster); }
 
-async function loadLibrary() {
-  const r = await (await fetch('/api/library')).json();
-  lib = r.items; hasFfmpeg = r.ffmpeg;
+function showBrowseView() {
+  $('#browseView').hidden = false;
+  $('#subpageView').hidden = true;
+  $('#playView').hidden = true;
+  $('#ambient').style.backgroundImage = '';
   renderLibrary();
 }
 
+function renderCurrentView() {
+  if (!$('#browseView').hidden) renderLibrary();
+  else if (!$('#subpageView').hidden && currentSubItem) renderSubpageContent(currentSubItem);
+  updateLivePill();
+}
+
+window.addEventListener('hashchange', handleRoute);
+
+async function loadLibrary() {
+  try {
+    const r = await (await fetch('/api/library')).json();
+    lib = r.items || [];
+    renderLibrary();
+    setupHeroSpotlight();
+  } catch (e) {
+    $('#browseNote').textContent = 'Błąd wczytywania biblioteki.';
+  }
+}
+
+function setupHeroSpotlight() {
+  if (!lib.length) { $('#heroSpotlight').hidden = true; return; }
+  const top = [...lib].sort((a, b) => (parseFloat(b.imdb) || 0) - (parseFloat(a.imdb) || 0))[0];
+  if (!top) return;
+
+  $('#heroImg').src = top.poster;
+  $('#heroTitle').textContent = top.title;
+  $('#heroImdb').textContent = top.imdb && top.imdb !== '—' ? `IMDb ${top.imdb}` : 'IMDb';
+  $('#heroYear').textContent = top.released || '';
+  $('#heroDuration').textContent = top.kind === 'series' ? `${top.episodes.length} ${t('episodes')}` : fmtDur(top.duration);
+  
+  const hasPl = (top.audio || []).some(a => a.pl);
+  $('#heroAudioPl').hidden = !hasPl;
+
+  const desc = curLang === 'pl' ? (top.plotPl || top.plot || top.plotEn) : (top.plotEn || top.plot || top.plotPl);
+  $('#heroPlot').textContent = desc || '';
+
+  $('#heroPlayBtn').onclick = () => {
+    if (top.kind === 'series') window.location.hash = '#/title/' + enc(top.id);
+    else startWatch(top.episodes[0].file, 'solo');
+  };
+  $('#heroDetailsBtn').onclick = () => { window.location.hash = '#/title/' + enc(top.id); };
+
+  $('#heroSpotlight').hidden = false;
+}
+
 function renderLibrary() {
-  const query = $('#q').value.trim().toLowerCase();
-  const sortBy = $('#sortSelect').value;
-  const grid = $('#grid'); 
+  const query = $('#searchInput') ? $('#searchInput').value.trim().toLowerCase() : '';
+  const sortBy = $('#sortSelect') ? $('#sortSelect').value : 'imdbDesc';
+  const grid = $('#mediaGrid');
+  if (!grid) return;
   grid.replaceChildren();
 
-  let items = lib.filter(m => m.title.toLowerCase().includes(query));
+  let items = lib.filter(m => {
+    if (currentFilter !== 'all' && m.kind !== currentFilter) return false;
+    if (query && !m.title.toLowerCase().includes(query)) return false;
+    return true;
+  });
 
   items.sort((a, b) => {
-    if (sortBy === 'nameAsc') return a.title.localeCompare(b.title, 'pl', { numeric: true });
-    if (sortBy === 'nameDesc') return b.title.localeCompare(a.title, 'pl', { numeric: true });
+    if (sortBy === 'nameAsc') return a.title.localeCompare(b.title, curLang, { numeric: true });
+    if (sortBy === 'nameDesc') return b.title.localeCompare(a.title, curLang, { numeric: true });
     if (sortBy === 'dateNew') return (b.released || '').localeCompare(a.released || '');
     if (sortBy === 'dateOld') return (a.released || '').localeCompare(b.released || '');
     if (sortBy === 'imdbDesc') return (parseFloat(b.imdb) || 0) - (parseFloat(a.imdb) || 0);
     return 0;
   });
 
-  $('#libNote').textContent = !lib.length ? 'Biblioteka jest pusta.' : !items.length ? 'Brak wyników wyszukiwania.' : '';
-  for (const m of items) grid.append(card(m));
+  $('#browseNote').textContent = !lib.length ? t('emptyLib') : !items.length ? t('noResults') : '';
+
+  items.forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'media-card';
+
+    const pWrap = document.createElement('div');
+    pWrap.className = 'poster-wrap';
+
+    const ph = document.createElement('span');
+    ph.className = 'poster-placeholder';
+    ph.textContent = m.title.charAt(0).toUpperCase();
+    pWrap.appendChild(ph);
+
+    const img = new Image();
+    img.loading = 'lazy';
+    img.src = m.poster;
+    img.onerror = () => img.remove();
+    pWrap.appendChild(img);
+
+    const hist = activeProfile && activeProfile.history;
+    const isMovieWatched = m.kind === 'movie' && hist && hist[m.episodes[0]?.file]?.finished;
+    if (isMovieWatched) {
+      const wBadge = document.createElement('span');
+      wBadge.className = 'badge-watched';
+      wBadge.style.position = 'absolute';
+      wBadge.style.bottom = '8px';
+      wBadge.style.left = '8px';
+      wBadge.textContent = '✓ ' + t('watched');
+      pWrap.appendChild(wBadge);
+    }
+
+    if (partyState && partyState.active && partyState.video && partyState.video.startsWith(m.id)) {
+      const live = document.createElement('span');
+      live.className = 'live-badge-card';
+      live.textContent = 'PARTY';
+      pWrap.appendChild(live);
+    }
+
+    if (m.imdb && m.imdb !== '—') {
+      const imdbBadge = document.createElement('span');
+      imdbBadge.className = 'imdb-badge-card';
+      imdbBadge.textContent = m.imdb;
+      pWrap.appendChild(imdbBadge);
+    }
+
+    const info = document.createElement('div');
+    info.className = 'card-info';
+
+    const title = document.createElement('strong');
+    title.className = 'card-title';
+    title.textContent = m.title;
+
+    const meta = document.createElement('div');
+    meta.className = 'card-meta';
+    const metaText = m.kind === 'series' ? `${m.episodes.length} ${t('episodes')}` : fmtDur(m.duration);
+    meta.textContent = [m.released !== '—' ? m.released : '', metaText].filter(Boolean).join(' · ');
+
+    const langs = document.createElement('div');
+    langs.className = 'card-langs';
+    const seen = new Map();
+    (m.audio || []).forEach(a => { if (!seen.has(a.code) || a.pl) seen.set(a.code, a.pl); });
+    for (const [code, pl] of seen) {
+      const badge = document.createElement('span');
+      badge.className = 'badge-pill' + (pl ? ' pl' : '');
+      badge.textContent = code;
+      langs.appendChild(badge);
+    }
+
+    info.appendChild(title);
+    info.appendChild(meta);
+    if (langs.children.length) info.appendChild(langs);
+
+    card.appendChild(pWrap);
+    card.appendChild(info);
+
+    card.onclick = () => { window.location.hash = '#/title/' + enc(m.id); };
+    grid.appendChild(card);
+  });
+
+  renderContinueWatching();
 }
 
-function card(m) {
-  const b = el('button', 'card');
-  const p = el('div', 'poster');
-  p.style.background = `linear-gradient(160deg, hsl(${hue(m.id)} 45% 32%), hsl(${(hue(m.id) + 55) % 360} 40% 14%))`;
-  p.append(el('span', 'ph', m.title.charAt(0).toUpperCase()));
-  const img = new Image(); img.loading = 'lazy'; img.alt = ''; img.src = m.poster; img.onerror = () => img.remove();
-  p.append(img);
-  if (cur && cur.t.id === m.id) p.append(el('span', 'live', 'Teraz leci'));
-  
-  const info = el('div', 'info');
-  info.append(el('strong', '', m.title));
-  
-  if (m.released && m.released !== '—') {
-    info.append(el('span', 'dim', m.released));
+function renderContinueWatching() {
+  const cont = $('#continueGrid');
+  if (!cont) return;
+  cont.replaceChildren();
+
+  if (!activeProfile || !activeProfile.history) {
+    $('#continueSection').hidden = true;
+    return;
   }
 
-  if (m.imdb && m.imdb !== '—') {
-    info.append(el('div', 'imdb-badge', m.imdb));
+  const items = Object.values(activeProfile.history)
+    .filter(h => h.time > 15 && !h.finished)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  if (!items.length) {
+    $('#continueSection').hidden = true;
+    return;
   }
 
-  const meta = m.kind === 'series' ? 'Serial · ' + plural(m.episodes.length) : fmtDur(m.duration);
-  if (meta) info.append(el('span', 'dim', meta));
-  
-  const langs = el('div', 'langs');
-  const seen = new Map(); m.audio.forEach(a => { if (!seen.has(a.code) || a.pl) seen.set(a.code, a.pl); });
-  for (const [code, pl] of seen) langs.append(el('i', 'lang' + (pl ? ' pl' : ''), code));
-  if (langs.children.length) info.append(langs);
-  
-  b.append(p, info);
-  b.onclick = () => m.kind === 'series' ? showTitle(m) : send({ type: 'load', video: m.episodes[0].file });
-  return b;
+  items.slice(0, 4).forEach(h => {
+    const titleObj = lib.find(x => x.episodes.some(e => e.file === h.file));
+    const card = document.createElement('div');
+    card.className = 'continue-card';
+
+    const thumb = document.createElement('div');
+    thumb.className = 'continue-thumb';
+    if (titleObj) {
+      const img = new Image();
+      img.src = titleObj.poster;
+      thumb.appendChild(img);
+    }
+    const prog = document.createElement('div');
+    prog.className = 'continue-progress';
+    const bar = document.createElement('div');
+    bar.className = 'continue-bar';
+    const pct = Math.min(100, Math.round((h.time / (h.duration || 1)) * 100));
+    bar.style.width = pct + '%';
+    prog.appendChild(bar);
+    thumb.appendChild(prog);
+
+    const info = document.createElement('div');
+    info.className = 'continue-info';
+    const tEl = document.createElement('strong');
+    tEl.className = 'continue-title';
+    tEl.textContent = titleObj ? titleObj.title : h.title;
+    const sub = document.createElement('span');
+    sub.className = 'continue-subtitle';
+    const timeRemaining = h.duration ? fmtTimeWords(h.duration - h.time) : '';
+    const progressLabel = `${fmtTime(h.time)} / ${fmtTime(h.duration)}`;
+    sub.textContent = h.epName ? `${h.epName} · ${progressLabel} (${t('timeLeft')}: ${timeRemaining})` : `${progressLabel} (${t('timeLeft')}: ${timeRemaining})`;
+
+    info.appendChild(tEl);
+    info.appendChild(sub);
+    card.appendChild(thumb);
+    card.appendChild(info);
+
+    card.onclick = () => { startWatch(h.file, 'solo'); };
+    cont.appendChild(card);
+  });
+
+  $('#continueSection').hidden = false;
 }
 
-function showTitle(t) {
-  $('#tTitle').textContent = t.title;
-  $('#tImdb').textContent = t.imdb && t.imdb !== '—' ? `IMDb ${t.imdb}` : '';
-  $('#tReleased').textContent = t.released && t.released !== '—' ? `Premiera: ${t.released}` : '';
-  $('#tSub').textContent = plural(t.episodes.length);
-  
-  const last = localStorage.getItem('last:' + t.id);
-  const box = $('#eps'); box.replaceChildren();
-  const groups = new Map();
-  t.episodes.forEach(e => { if (!groups.has(e.group)) groups.set(e.group, []); groups.get(e.group).push(e); });
-  
-  for (const [name, list] of groups) {
-    const g = el('div', 'group');
-    if (name) g.append(el('h3', '', name));
-    for (const e of list) {
-      const now = cur && cur.file === e.file;
-      const b = el('button', 'ep' + (now ? ' now' : e.file === last ? ' last' : ''));
-      
-      const leftDiv = el('div', 'ep-left');
-      leftDiv.append(el('strong', '', e.name));
-      
-      let metaLine = '';
-      if (e.imdb && e.imdb !== '—') metaLine += `★ ${e.imdb}`;
-      if (e.released && e.released !== '—') metaLine += `  •  ${e.released}`;
-      
-      if (metaLine) {
-        leftDiv.append(el('span', 'dim', metaLine));
+let currentSubItem = null;
+
+async function showTitleSubpage(id) {
+  let item = lib.find(x => x.id === id);
+  if (!item) {
+    await loadLibrary();
+    item = lib.find(x => x.id === id);
+  }
+  if (!item) { window.location.hash = '#/'; return; }
+
+  currentSubItem = item;
+  $('#browseView').hidden = true;
+  $('#playView').hidden = true;
+  $('#subpageView').hidden = false;
+
+  renderSubpageContent(item);
+}
+
+function renderSubpageContent(item) {
+  $('#subBackdrop').style.backgroundImage = `url("${item.poster}")`;
+  $('#ambient').style.backgroundImage = `url("${item.poster}")`;
+  $('#subPosterImg').src = item.poster;
+  $('#subTitle').textContent = item.title;
+  $('#subImdb').textContent = item.imdb && item.imdb !== '—' ? `IMDb ${item.imdb}` : 'IMDb';
+  $('#subYear').textContent = item.released || '';
+  $('#subDuration').textContent = item.kind === 'series' ? `${item.episodes.length} ${t('episodes')}` : fmtDur(item.duration);
+  $('#subKind').textContent = item.kind === 'series' ? t('series') : t('movie');
+
+  const bBox = $('#subAudioBadges');
+  bBox.replaceChildren();
+  (item.audio || []).forEach(a => {
+    const badge = document.createElement('span');
+    badge.className = 'badge-pill' + (a.pl ? ' pl' : '');
+    badge.textContent = curLang === 'pl' ? a.label : (a.labelEn || a.label);
+    bBox.appendChild(badge);
+  });
+
+  const plot = curLang === 'pl' ? (item.plotPl || item.plot || item.plotEn) : (item.plotEn || item.plot || item.plotPl);
+  $('#subPlot').textContent = plot || t('noPlot');
+
+  const genre = curLang === 'pl' ? (item.genrePl || item.genre) : (item.genre || item.genrePl);
+  $('#subGenre').textContent = genre || '—';
+  $('#subDirector').textContent = item.director || '—';
+  $('#subActors').textContent = item.actors || '—';
+
+  const hist = activeProfile && activeProfile.history;
+  const firstFile = item.episodes[0].file;
+  const isMovie = item.kind === 'movie';
+  const movieH = isMovie && hist && hist[firstFile];
+
+  if (isMovie) {
+    $('#subToggleWatchedBtn').hidden = false;
+    const isWatched = movieH && movieH.finished;
+    $('#subMovieWatchedBadge').hidden = !isWatched;
+    $('#subToggleWatchedText').textContent = isWatched ? t('markUnwatched') : t('markWatched');
+    $('#subToggleWatchedBtn').onclick = () => {
+      toggleWatched(firstFile, item.title, 1, 1, '', item.duration);
+    };
+
+    if (isWatched) {
+      $('#subSoloPlayText').textContent = t('watchAgain') + ' (solo)';
+      $('#subSoloPlayBtn').onclick = () => startWatch(firstFile, 'solo');
+    } else if (movieH && movieH.time > 15) {
+      $('#subSoloPlayText').textContent = `${t('resume')} od ${fmtTime(movieH.time)} (solo)`;
+      $('#subSoloPlayBtn').onclick = () => startWatch(firstFile, 'solo');
+    } else {
+      $('#subSoloPlayText').textContent = t('play') + ' (solo)';
+      $('#subSoloPlayBtn').onclick = () => startWatch(firstFile, 'solo');
+    }
+  } else {
+    $('#subToggleWatchedBtn').hidden = true;
+    $('#subMovieWatchedBadge').hidden = true;
+    const lastEpPlayed = hist && Object.values(hist).filter(h => item.episodes.some(e => e.file === h.file)).sort((a,b) => b.updatedAt - a.updatedAt)[0];
+    if (lastEpPlayed && !lastEpPlayed.finished && lastEpPlayed.time > 15) {
+      $('#subSoloPlayText').textContent = `${t('resume')} ${lastEpPlayed.epName || 'odc.'} (${fmtTime(lastEpPlayed.time)})`;
+      $('#subSoloPlayBtn').onclick = () => startWatch(lastEpPlayed.file, 'solo');
+    } else {
+      $('#subSoloPlayText').textContent = `${t('playEpisode')} 1 (solo)`;
+      $('#subSoloPlayBtn').onclick = () => startWatch(firstFile, 'solo');
+    }
+  }
+
+  const isPartyOnThis = partyState && partyState.active && partyState.video && item.episodes.some(e => e.file === partyState.video);
+  if (isPartyOnThis) {
+    $('#subPartyPlayText').textContent = t('joinLiveSession');
+    $('#subPartyPlayBtn').onclick = () => startWatch(partyState.video, 'party');
+  } else {
+    $('#subPartyPlayText').textContent = t('watchParty');
+    $('#subPartyPlayBtn').onclick = () => startWatch(firstFile, 'party');
+  }
+
+  if (item.kind === 'series') {
+    $('#seriesEpisodesBlock').hidden = false;
+    renderSeriesEpisodes(item);
+  } else {
+    $('#seriesEpisodesBlock').hidden = true;
+  }
+}
+
+function renderSeriesEpisodes(item) {
+  const tabs = $('#seasonTabs');
+  const epList = $('#episodesList');
+  tabs.replaceChildren();
+  epList.replaceChildren();
+
+  const seasonsMap = new Map();
+  item.episodes.forEach(e => {
+    const sNum = e.season || 1;
+    if (!seasonsMap.has(sNum)) seasonsMap.set(sNum, []);
+    seasonsMap.get(sNum).push(e);
+  });
+
+  const seasonKeys = [...seasonsMap.keys()].sort((a, b) => a - b);
+  let activeSeason = seasonKeys[0];
+
+  function renderSeason(s) {
+    activeSeason = s;
+    document.querySelectorAll('.season-tab').forEach(tb => {
+      tb.classList.toggle('active', tb.dataset.season === String(s));
+    });
+    epList.replaceChildren();
+
+    const eps = seasonsMap.get(s) || [];
+    const hist = activeProfile && activeProfile.history;
+
+    eps.forEach(e => {
+      const card = document.createElement('div');
+      const isNow = cur && cur.file === e.file;
+      const h = hist && hist[e.file];
+      const isWatched = h && h.finished;
+      const isInProgress = h && !h.finished && h.time > 15;
+
+      card.className = 'episode-card' + (isNow ? ' active-episode' : '');
+
+      const left = document.createElement('div');
+      left.className = 'episode-left';
+
+      const num = document.createElement('span');
+      num.className = 'episode-num';
+      num.textContent = String(e.episode).padStart(2, '0');
+
+      const info = document.createElement('div');
+      info.className = 'episode-info-text';
+
+      const epTitle = document.createElement('strong');
+      epTitle.className = 'episode-title';
+      epTitle.textContent = e.name;
+
+      const meta = document.createElement('div');
+      meta.className = 'episode-meta-row';
+      if (e.imdb && e.imdb !== '—') meta.innerHTML += `<span style="color:var(--imdb-yellow)">★</span> ${e.imdb}`;
+      if (e.released && e.released !== '—') meta.innerHTML += ` · ${e.released}`;
+
+      if (isWatched) {
+        meta.innerHTML += ` · <span class="badge-watched">✓ ${t('watched')}</span>`;
+      } else if (isInProgress) {
+        meta.innerHTML += ` · <span class="badge-in-progress">⏱️ ${fmtTime(h.time)} / ${fmtTime(h.duration)}</span>`;
       }
 
-      b.append(leftDiv, el('span', 'tag', now ? 'leci teraz' : e.file === last ? 'ostatnio' : ''));
-      b.onclick = () => send({ type: 'load', video: e.file });
-      g.append(b);
-    }
-    box.append(g);
+      info.appendChild(epTitle);
+      info.appendChild(meta);
+      if (e.plot) {
+        const pDesc = document.createElement('p');
+        pDesc.style.fontSize = '13px';
+        pDesc.style.color = 'var(--text-muted)';
+        pDesc.style.margin = '4px 0 0';
+        pDesc.textContent = e.plot;
+        info.appendChild(pDesc);
+      }
+
+      left.appendChild(num);
+      left.appendChild(info);
+
+      const right = document.createElement('div');
+      right.className = 'episode-right';
+
+      if (partyState && partyState.active && partyState.video === e.file) {
+        const tag = document.createElement('span');
+        tag.className = 'badge-pill pl';
+        tag.textContent = t('nowPlayingRoom');
+        right.appendChild(tag);
+      }
+
+      const checkBtn = document.createElement('button');
+      checkBtn.className = 'ep-check-btn' + (isWatched ? ' checked' : '');
+      checkBtn.innerHTML = '✓';
+      checkBtn.title = isWatched ? t('markUnwatched') : t('markWatched');
+      checkBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        toggleWatched(e.file, item.title, e.season, e.episode, e.name, 2600);
+      };
+      right.appendChild(checkBtn);
+
+      const soloBtn = document.createElement('button');
+      soloBtn.className = 'btn btn-primary';
+      soloBtn.innerHTML = '▶';
+      soloBtn.title = t('playSolo');
+      soloBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        startWatch(e.file, 'solo');
+      };
+      right.appendChild(soloBtn);
+
+      card.appendChild(left);
+      card.appendChild(right);
+
+      if (isInProgress) {
+        const progWrap = document.createElement('div');
+        progWrap.className = 'ep-card-progress';
+        const progBar = document.createElement('div');
+        progBar.className = 'ep-card-bar';
+        const pct = Math.min(100, Math.round((h.time / (h.duration || 1)) * 100));
+        progBar.style.width = pct + '%';
+        progWrap.appendChild(progBar);
+        card.appendChild(progWrap);
+      }
+
+      card.onclick = () => { startWatch(e.file, 'solo'); };
+      epList.appendChild(card);
+    });
   }
-  setView('title', t.poster);
+
+  seasonKeys.forEach(s => {
+    const tab = document.createElement('button');
+    tab.className = 'season-tab' + (s === activeSeason ? ' active' : '');
+    tab.dataset.season = s;
+    tab.textContent = `${t('season')} ${s} (${seasonsMap.get(s).length} ${t('episodes')})`;
+    tab.onclick = () => renderSeason(s);
+    tabs.appendChild(tab);
+  });
+
+  renderSeason(activeSeason);
 }
 
-let openSeq = 0;
-function preferredAudio(meta, t) {
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem('alang:' + t.id)); } catch {}
-  if (saved) {
-    const x = meta.audio.find(a => a.label === saved.label) || meta.audio.find(a => a.code === saved.code);
-    if (x) return x.i;
+function startWatch(file, mode = 'solo') {
+  clientWatchMode = mode;
+  if (mode === 'party') {
+    send({ type: 'load', video: file });
   }
-  const pl = meta.audio.find(a => a.pl); if (pl) return pl.i;
-  const def = meta.audio.find(a => a.def); return def ? def.i : 0;
-}
-function preferredSub(meta, t, hasPlAudio) {
-  const saved = localStorage.getItem('asub:' + t.id);
-  if (saved === 'off') return 'off';
-  if (saved === 'ext' && meta.extSub) return 'ext';
-  if (saved && saved.startsWith('code:')) { const x = meta.subs.find(s => s.code === saved.slice(5)); if (x) return String(x.i); }
-  const plSub = meta.subs.find(s => s.pl);
-  return (!hasPlAudio && meta.audio.length && (plSub || meta.extSub)) ? (plSub ? String(plSub.i) : 'ext') : 'off';
+  window.location.hash = `#/watch?v=${enc(file)}&mode=${mode}`;
 }
 
-async function openMovie(file) {
+const v = $('#v');
+const aud = $('#aud');
+const volRange = $('#volRange');
+
+let openSeq = 0, alignSeq = 0, subSeq = 0, gating = false;
+let audBase = 0, audMode = 'none', audFile = null;
+let audioOffset = parseInt(localStorage.getItem('audioOffset') || '0', 10) || 0;
+let subRaw = '', subBlobUrl = null;
+const LIVE_LAG = 0.044;
+
+const audIdx = () => +$('#aSel').value || 0;
+const audKey = () => cur ? cur.file + '|' + audIdx() : '';
+const audAbs = () => audBase + (aud.currentTime || 0) - (audMode === 'live' ? LIVE_LAG : 0);
+const audTarget = () => Math.max(0, v.currentTime - audioOffset / 1000);
+const liveUrl = t => `/audio?name=${enc(cur.file)}&a=${audIdx()}&start=${t.toFixed(3)}`;
+
+function updatePlayerModeUI() {
+  const isParty = clientWatchMode === 'party';
+  $('#playerModeIcon').textContent = isParty ? '👥' : '👤';
+  $('#playerModeText').textContent = isParty ? t('partyMode') : t('soloMode');
+  $('#playerModeBtn').title = isParty ? t('switchToSolo') : t('startWatchParty');
+  $('#playerModeBtn').classList.toggle('btn-primary', isParty);
+  $('#playerModeBtn').classList.toggle('btn-ghost', !isParty);
+}
+
+function showPlayerView() {
+  $('#browseView').hidden = true;
+  $('#subpageView').hidden = true;
+  $('#playView').hidden = false;
+  $('#ambient').style.backgroundImage = cur && cur.t ? `url("${cur.t.poster}")` : '';
+  updatePlayerModeUI();
+}
+
+function updateLivePill() {
+  const pill = $('#livePill');
+  if (partyState && partyState.active && partyState.video) {
+    pill.hidden = false;
+    const titleObj = lib.find(x => x.episodes.some(e => e.file === partyState.video));
+    const titleName = titleObj ? titleObj.title : partyState.video.split('/').pop();
+    $('#livePillText').textContent = `${titleName} (PARTY)`;
+  } else {
+    pill.hidden = true;
+  }
+}
+
+async function openVideo(file) {
   const my = ++openSeq;
-  let t = lib.find(x => x.episodes.some(e => e.file === file));
-  if (!t) { await loadLibrary(); t = lib.find(x => x.episodes.some(e => e.file === file)); }
-  if (!t) return;
+  let tObj = lib.find(x => x.episodes.some(e => e.file === file));
+  if (!tObj) {
+    await loadLibrary();
+    tObj = lib.find(x => x.episodes.some(e => e.file === file));
+  }
+  if (!tObj) return;
+
   const meta = await (await fetch('/api/meta?name=' + enc(file))).json();
   if (my !== openSeq || meta.error) return;
-  cur = { ...meta, t };
-  localStorage.setItem('last:' + t.id, file);
-  const series = t.kind === 'series';
-  $('#title').textContent = t.title;
+
+  cur = { ...meta, t: tObj };
+
+  const currentEp = tObj.episodes.find(e => e.file === file);
+  $('#playerTitle').textContent = tObj.title;
+  const isSeries = tObj.kind === 'series';
   const langs = [...new Set(meta.audio.map(a => a.code))].join(', ');
-  $('#sub').textContent = [series && meta.title, fmtDur(meta.duration), langs && `dźwięk: ${langs}`].filter(Boolean).join(' · ');
-  const idx = t.episodes.findIndex(e => e.file === file);
-  $('#epsBtn').hidden = !series;
-  $('#nextBtn').hidden = idx >= t.episodes.length - 1;
+  const epSubtitle = (isSeries && currentEp && currentEp.name) ? currentEp.name : (isSeries ? meta.title : '');
+  $('#playerSubtitle').textContent = [epSubtitle, fmtDur(meta.duration), langs && `${t('audioTrack')}: ${langs}`].filter(Boolean).join(' · ');
 
-  const aSel = $('#aSel'); aSel.replaceChildren();
-  meta.audio.forEach(a => { const o = el('option', '', a.label); o.value = a.i; aSel.append(o); });
-  if (!meta.audio.length) { const o = el('option', '', 'Ścieżka z pliku'); o.value = 0; aSel.append(o); }
-  aSel.value = preferredAudio(meta, t);
-  const hasPlAudio = meta.audio.some(a => a.pl);
-  const sSel = $('#sSel'); sSel.replaceChildren();
-  const off = el('option', '', 'Wyłączone'); off.value = 'off'; sSel.append(off);
-  meta.subs.forEach(s => { const o = el('option', '', s.label); o.value = s.i; sSel.append(o); });
-  if (meta.extSub) { const o = el('option', '', 'Plik napisów obok filmu'); o.value = 'ext'; sSel.append(o); }
-  sSel.value = preferredSub(meta, t, hasPlAudio);
+  const idx = tObj.episodes.findIndex(e => e.file === file);
+  $('#playerNextBtn').hidden = idx >= tObj.episodes.length - 1;
 
-  $('#warn').textContent = '';
-  showPlay();
+  const aSel = $('#aSel');
+  aSel.replaceChildren();
+  meta.audio.forEach(a => {
+    const o = document.createElement('option');
+    o.value = a.i;
+    o.textContent = curLang === 'pl' ? a.label : (a.labelEn || a.label);
+    aSel.appendChild(o);
+  });
+  if (!meta.audio.length) {
+    const o = document.createElement('option');
+    o.value = 0;
+    o.textContent = curLang === 'pl' ? 'Domyślna' : 'Default';
+    aSel.appendChild(o);
+  }
+  const plAud = meta.audio.find(a => a.pl);
+  aSel.value = plAud ? plAud.i : 0;
+
+  const sSel = $('#sSel');
+  sSel.replaceChildren();
+  const offOpt = document.createElement('option');
+  offOpt.value = 'off';
+  offOpt.textContent = t('subtitlesOff');
+  sSel.appendChild(offOpt);
+  meta.subs.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.id;
+    o.textContent = s.label;
+    sSel.appendChild(o);
+  });
+  const plSub = meta.subs.find(s => s.pl);
+  sSel.value = (!plAud && plSub) ? plSub.id : 'off';
+
+  $('#playerWarn').textContent = '';
+  showPlayerView();
   setSource();
 }
 
-const nextEpisode = () => {
-  if (!cur) return null;
-  const i = cur.t.episodes.findIndex(e => e.file === cur.file);
-  return cur.t.episodes[i + 1] || null;
-};
+function waitFor(el, evs, ms) {
+  return new Promise(res => {
+    let done = false;
+    const fin = () => { if (done) return; done = true; evs.forEach(e => el.removeEventListener(e, fin)); clearTimeout(tm); res(); };
+    evs.forEach(e => el.addEventListener(e, fin));
+    const tm = setTimeout(fin, ms);
+  });
+}
 
-function applySubs() {
-  v.querySelectorAll('track').forEach(t => t.remove());
-  const k = $('#sSel').value;
-  if (k === 'off' || !cur) return;
-  const t = document.createElement('track');
-  t.kind = 'subtitles'; 
-  t.label = 'Polskie'; 
-  t.srclang = 'pl'; 
-  t.default = true;
-  t.src = `/sub/${enc(cur.file)}`;
-  v.appendChild(t);
-  
-  t.onload = () => {
-    for (const x of v.textTracks) x.mode = 'showing';
-  };
-  setTimeout(() => {
-    for (const x of v.textTracks) x.mode = 'showing';
-  }, 150);
+async function alignAudio(t) {
+  const my = ++alignSeq;
+  aud.pause();
+  aud.playbackRate = 1;
+  if (audFile && audFile.key === audKey()) {
+    if (audMode !== 'file') {
+      audMode = 'file'; audBase = 0;
+      aud.src = audFile.url; aud.load();
+      await waitFor(aud, ['loadedmetadata'], 5000);
+      if (my !== alignSeq) return false;
+    }
+    audBase = 0;
+    if (aud.readyState < 1) { await waitFor(aud, ['loadedmetadata'], 5000); if (my !== alignSeq) return false; }
+    if (Math.abs(aud.currentTime - t) > 0.02) { aud.currentTime = t; await waitFor(aud, ['seeked'], 2000); }
+    if (aud.readyState < 3) await waitFor(aud, ['canplay'], 2000);
+  } else {
+    audMode = 'live'; audBase = t;
+    aud.src = liveUrl(t); aud.load();
+    await waitFor(aud, ['canplay', 'error'], 6000);
+  }
+  return my === alignSeq;
+}
+
+function onAudioBlocked() { $('#joinPrompt').hidden = false; }
+
+async function playTogether() {
+  if (gating || !cur) return;
+  gating = true; quiet(10000);
+  try {
+    for (let tries = 0; tries < 3; tries++) {
+      const off = Math.abs(audAbs() - audTarget());
+      const ready = audMode !== 'none' && aud.readyState >= 3 && !aud.error && off < 0.12;
+      if (ready) break;
+      v.pause();
+      if (!(await alignAudio(audTarget()))) return;
+    }
+    await Promise.all([v.play().catch(() => {}), aud.play().catch(onAudioBlocked)]);
+  } finally { gating = false; suppressUntil = Date.now() + 600; }
+}
+
+async function pollAudioFile() {
+  const key = audKey();
+  while (cur && key === audKey()) {
+    let r;
+    try { r = await (await fetch(`/api/audioinfo?name=${enc(cur.file)}&a=${audIdx()}`)).json(); } catch { return; }
+    if (key !== audKey()) return;
+    if (r.error) { $('#audioNote').textContent = ''; return; }
+    if (r.ready) {
+      audFile = { key, url: r.url };
+      $('#audioNote').textContent = '';
+      if (v.paused && !gating) alignAudio(audTarget());
+      return;
+    }
+    $('#audioNote').textContent = t('preparingAudio').replace('{p}', Math.round((r.progress || 0) * 100));
+    await sleep(2800);
+  }
 }
 
 async function setSource() {
   const my = ++token;
-  const a = +$('#aSel').value || 0;
-  quiet(6000);
-  v.pause();
-  aud.pause();
-
+  quiet(8000);
+  v.pause(); aud.pause();
+  audMode = 'none'; audFile = null; audBase = 0;
+  aud.removeAttribute('src'); aud.load();
   v.src = '/video/' + enc(cur.file);
-  aud.src = `/audio?name=${enc(cur.file)}&a=${a}&start=0`;
-  applySubs();
-  
   v.load();
-  aud.load();
-
   await new Promise(r => v.addEventListener('loadedmetadata', r, { once: true }));
   if (my !== token) return;
-  const s = await getState();
-  if (s.video === cur.file) applyTiming(s, 0.2);
+  applySubs();
+  pollAudioFile();
+
+  if (clientWatchMode === 'party') {
+    const s = await getState();
+    if (my !== token) return;
+    if (s.video === cur.file) applyTiming(s, 0.2);
+  } else {
+    if (activeProfile && activeProfile.history && activeProfile.history[cur.file]) {
+      const savedTime = activeProfile.history[cur.file].time;
+      if (savedTime > 5 && !activeProfile.history[cur.file].finished) {
+        v.currentTime = savedTime;
+      }
+    }
+  }
+  if (v.paused) alignAudio(audTarget());
 }
 
-volRange.oninput = () => {
-  aud.volume = volRange.value;
-  localStorage.setItem('audioVol', volRange.value);
+function shiftVtt(vtt, delta) {
+  if (!delta) return vtt;
+  const fmt = sec => {
+    sec = Math.max(0, sec);
+    const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = Math.floor(sec % 60), ms = Math.round((sec % 1) * 1000);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+  };
+  return vtt.replace(/(?:(\d+):)?(\d{2}):(\d{2})\.(\d{3})/g, (_, h, m, s, ms) => fmt((+h || 0) * 3600 + +m * 60 + +s + +ms / 1000 + delta));
+}
+
+function showSubTrack() {
+  v.querySelectorAll('track').forEach(t => t.remove());
+  if (subBlobUrl) { URL.revokeObjectURL(subBlobUrl); subBlobUrl = null; }
+  if (!subRaw) return;
+  const delta = +$('#subDelay').value || 0;
+  subBlobUrl = URL.createObjectURL(new Blob([shiftVtt(subRaw, delta)], { type: 'text/vtt' }));
+  const tr = document.createElement('track');
+  tr.kind = 'subtitles'; tr.label = 'Napisy'; tr.srclang = 'pl'; tr.default = true; tr.src = subBlobUrl;
+  v.appendChild(tr);
+  tr.track.mode = 'showing';
+}
+
+async function applySubs() {
+  const my = ++subSeq;
+  subRaw = '';
+  showSubTrack();
+  const k = $('#sSel').value;
+  if (k === 'off' || !cur) { $('#playerWarn').textContent = ''; return; }
+  $('#playerWarn').textContent = t('loadingSubs');
+  let vtt = '';
+  try {
+    const r = await fetch(`/sub/${enc(cur.file)}?s=${enc(k)}`);
+    if (!r.ok) throw new Error();
+    vtt = await r.text();
+  } catch { if (my === subSeq) $('#playerWarn').textContent = t('subError'); return; }
+  if (my !== subSeq) return;
+  subRaw = vtt;
+  $('#playerWarn').textContent = '';
+  showSubTrack();
+}
+
+volRange.oninput = () => { aud.volume = volRange.value; localStorage.setItem('audioVol', volRange.value); };
+const savedVol = localStorage.getItem('audioVol');
+if (savedVol !== null) { volRange.value = savedVol; aud.volume = savedVol; }
+
+$('#offRange').value = audioOffset; $('#offVal').textContent = audioOffset + ' ms';
+$('#offRange').oninput = () => { audioOffset = +$('#offRange').value; $('#offVal').textContent = audioOffset + ' ms'; localStorage.setItem('audioOffset', audioOffset); };
+$('#offRange').onchange = () => { if (audMode === 'file' && !gating) aud.currentTime = audTarget(); };
+
+$('#subDelay').oninput = () => {
+  $('#subDelayVal').textContent = fmtSec(+$('#subDelay').value);
+  showSubTrack();
 };
 
-const savedVol = localStorage.getItem('audioVol');
-if (savedVol !== null) {
-  volRange.value = savedVol;
-  aud.volume = savedVol;
-}
+v.addEventListener('volumechange', () => { if (!v.muted) v.muted = true; });
 
 v.addEventListener('play', () => {
-  aud.currentTime = v.currentTime;
-  aud.play().catch(() => {});
-  if (Date.now() > suppressUntil) send({ type: 'play', time: v.currentTime });
+  const mine = Date.now() > suppressUntil && !gating;
+  playTogether().then(() => {
+    if (mine && !v.paused && clientWatchMode === 'party') {
+      send({ type: 'play', time: v.currentTime });
+    }
+  });
 });
 
 v.addEventListener('pause', () => {
   aud.pause();
-  if (Date.now() > suppressUntil && !v.ended) send({ type: 'pause', time: v.currentTime });
+  saveWatchProgress();
+  if (!gating && Date.now() > suppressUntil && !v.ended && clientWatchMode === 'party') {
+    send({ type: 'pause', time: v.currentTime });
+  }
 });
 
-v.addEventListener('seeked', () => {
-  quiet();
-  const a = +$('#aSel').value || 0;
-  aud.src = `/audio?name=${enc(cur.file)}&a=${a}&start=${v.currentTime}`;
-  aud.play().catch(() => {});
-  if (Date.now() > suppressUntil) send({ type: 'seek', time: v.currentTime });
+v.addEventListener('waiting', () => { if (!v.paused && !gating) aud.pause(); });
+v.addEventListener('playing', () => {
+  if (gating || v.paused || !aud.paused || aud.ended) return;
+  if (Math.abs(audAbs() - audTarget()) < 0.25 && audMode !== 'none') aud.play().catch(onAudioBlocked);
+  else playTogether();
+});
+v.addEventListener('seeking', () => { if (!gating) aud.pause(); });
+v.addEventListener('seeked', async () => {
+  if (gating) return;
+  const mine = Date.now() > suppressUntil;
+  if (!v.paused) await playTogether(); else await alignAudio(audTarget());
+  if (mine && clientWatchMode === 'party') {
+    send({ type: 'seek', time: v.currentTime });
+  }
+});
+
+v.addEventListener('ended', () => {
+  if (!cur || !activeProfile) return;
+  saveWatchProgress(true);
 });
 
 $('#aSel').onchange = () => {
-  const a = cur.audio.find(x => x.i === +$('#aSel').value);
-  if (a) localStorage.setItem('alang:' + cur.t.id, JSON.stringify({ label: a.label, code: a.code }));
-  const aIdx = +$('#aSel').value || 0;
-  aud.src = `/audio?name=${enc(cur.file)}&a=${aIdx}&start=${v.currentTime}`;
-  aud.play().catch(() => {});
+  audMode = 'none'; audFile = null;
+  pollAudioFile();
+  if (!v.paused) playTogether(); else alignAudio(audTarget());
 };
-
-$('#sSel').onchange = () => {
-  const k = $('#sSel').value;
-  localStorage.setItem('asub:' + cur.t.id, k);
-  applySubs();
-};
-
-function tryPlay() { 
-  v.play().catch(() => { $('#join').hidden = false; }); 
-}
+$('#sSel').onchange = () => { applySubs(); };
 
 function applyTiming(s, tol = 0.4) {
   quiet();
-  if (Math.abs(v.currentTime - s.time) > tol) {
-    v.currentTime = s.time;
-    aud.src = `/audio?name=${enc(cur.file)}&a=${+$('#aSel').value || 0}&start=${s.time}`;
-  }
-  if (s.playing && v.paused) tryPlay();
-  if (!s.playing && !v.paused) { v.pause(); aud.pause(); }
+  if (Math.abs(v.currentTime - s.time) > tol) v.currentTime = s.time;
+  if (s.playing && v.paused) v.play().catch(() => {});
+  if (!s.playing && !v.paused) v.pause();
 }
 
-function apply(s) {
+function applyPartyState(s) {
+  partyState = s;
+  updateLivePill();
+
+  if (clientWatchMode !== 'party') return;
+
   if (!s.video) {
-    if (!views.play.hidden) {
-      leave();
-      showLib();
-    }
+    if (!$('#playView').hidden) { leaveVideo(); showBrowseView(); }
     cur = null;
     return;
   }
-  if (!cur || cur.file !== s.video) return openMovie(s.video);
-  if (views.play.hidden) return;
+  if (!cur || cur.file !== s.video) return openVideo(s.video);
+  if ($('#playView').hidden) return;
   applyTiming(s, 0.2);
 }
 
+setInterval(() => {
+  if (!cur || $('#playView').hidden || !activeProfile) return;
+  saveWatchProgress();
+}, 4000);
+
+setInterval(() => {
+  if (!cur || $('#playView').hidden || gating || v.seeking) return;
+  if (v.paused) { aud.playbackRate = 1; return; }
+  if (v.readyState < 3 || audMode === 'none' || !aud.src) return;
+  if (aud.paused) { if (!aud.ended) aud.play().catch(() => {}); return; }
+  const drift = audAbs() - audTarget();
+  const ad = Math.abs(drift);
+  if (ad > 0.8) playTogether();
+  else if (ad > 0.05) aud.playbackRate = Math.min(1.06, Math.max(0.94, 1 - drift * 0.6));
+  else aud.playbackRate = 1;
+}, 500);
+
 function connect() {
   const es = new EventSource('/events');
-  es.onopen = () => $('#dot').classList.add('on');
-  es.onerror = () => { $('#dot').classList.remove('on'); $('#viewers').textContent = 'rozłączono…'; };
   es.onmessage = e => {
     const m = JSON.parse(e.data);
-    if (m.viewers) $('#viewers').textContent = m.viewers === 1 ? 'jesteś sam(a)' : `oglądacie razem (${m.viewers})`;
-    if (m.type === 'state') apply(m.state);
-    else if (m.type === 'end') {
-      leave();
-      cur = null;
-      showLib();
-      toast('Zakończono seans');
+    if (m.party) {
+      partyState = m.party;
+      updateLivePill();
+      if (m.viewers) {
+        $('#viewersCount').textContent = m.viewers === 1 ? t('watchingAlone') : t('watchingTogether').replace('{n}', m.viewers);
+      }
     }
-    else if (m.type === 'load') { toast('Wybrano: ' + m.state.video.split('/').pop().replace(/\.[^.]+$/, '')); openMovie(m.state.video); }
-    else if (['play', 'pause', 'seek'].includes(m.type) && m.from !== myId) {
-      apply(m.state);
-      toast({ play: 'Znajomy: odtwarzanie', pause: 'Znajomy: pauza', seek: 'Znajomy przewinął' }[m.type]);
+    if (m.type === 'state') {
+      applyPartyState(m.party);
+    } else if (m.type === 'end' && m.party) {
+      partyState = m.party;
+      updateLivePill();
+      if (clientWatchMode === 'party') {
+        leaveVideo();
+        cur = null;
+        showBrowseView();
+        toast(t('sessionEndedToast'));
+      }
+    } else if (m.isParty && clientWatchMode === 'party') {
+      if (m.type === 'load') {
+        const titleName = m.party.video.split('/').pop().replace(/\.[^.]+$/, '');
+        toast((curLang === 'pl' ? 'Wspólny seans: ' : 'Watch Party: ') + titleName);
+        openVideo(m.party.video);
+      } else if (['play', 'pause', 'seek'].includes(m.type) && m.from !== myId) {
+        applyPartyState(m.party);
+        toast(m.type === 'play' ? t('friendPlay') : m.type === 'pause' ? t('friendPause') : t('friendSeek'));
+      }
     }
   };
 }
 
-v.addEventListener('ended', () => {
-  const n = nextEpisode();
-  if (n && Date.now() > suppressUntil) send({ type: 'load', video: n.file, after: cur.file });
+const leaveVideo = () => {
+  saveWatchProgress();
+  quiet();
+  v.pause();
+  aud.pause();
+  renderContinueWatching();
+};
+
+$('#playerBackBtn').onclick = () => {
+  leaveVideo();
+  if (cur && cur.t) window.location.hash = '#/title/' + enc(cur.t.id);
+  else window.location.hash = '#/';
+};
+
+$('#playerEndBtn').onclick = async () => {
+  leaveVideo();
+  if (clientWatchMode === 'party') {
+    await fetch('/api/end', { method: 'POST' }).catch(() => {});
+  }
+  cur = null;
+  window.location.hash = '#/';
+};
+
+$('#playerNextBtn').onclick = () => {
+  if (!cur || !cur.t) return;
+  const idx = cur.t.episodes.findIndex(e => e.file === cur.file);
+  const n = cur.t.episodes[idx + 1];
+  if (n) {
+    if (clientWatchMode === 'party') send({ type: 'load', video: n.file });
+    else startWatch(n.file, 'solo');
+  }
+};
+
+$('#joinBtn').onclick = async () => {
+  $('#joinPrompt').hidden = true;
+  try { await aud.play(); } catch {}
+  if (clientWatchMode === 'party') applyTiming(await getState(), 0.2);
+};
+
+$('#playerModeBtn').onclick = () => {
+  if (clientWatchMode === 'party') {
+    clientWatchMode = 'solo';
+    toast(t('switchToSolo'));
+  } else {
+    clientWatchMode = 'party';
+    toast(t('startWatchParty'));
+    if (cur) send({ type: 'load', video: cur.file });
+  }
+  updatePlayerModeUI();
+};
+
+$('#brandBtn').onclick = () => { window.location.hash = '#/'; };
+$('#navHome').onclick = () => { window.location.hash = '#/'; };
+$('#navMovies').onclick = () => { window.location.hash = '#/movies'; };
+$('#navSeries').onclick = () => { window.location.hash = '#/series'; };
+
+document.querySelectorAll('.cat-tab').forEach(b => {
+  b.onclick = () => {
+    const f = b.dataset.filter;
+    window.location.hash = f === 'all' ? '#/' : f === 'movie' ? '#/movies' : '#/series';
+  };
 });
 
-$('#joinBtn').onclick = async () => { 
-  $('#join').hidden = true; 
-  applyTiming(await getState()); 
-  aud.play().catch(()=>{});
+// Debounce dla wyszukiwarki mobilnej
+let searchTimer = null;
+$('#searchInput').oninput = () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    renderLibrary();
+  }, 250);
 };
 
-setInterval(async () => {
-  if (!cur || views.play.hidden || v.paused || v.seeking) return;
-  try {
-    const s = await getState();
-    if (s.video === cur.file && s.playing && Math.abs(v.currentTime - s.time) > 1.5) { 
-      quiet(); 
-      v.currentTime = s.time; 
-      aud.src = `/audio?name=${enc(cur.file)}&a=${+$('#aSel').value || 0}&start=${s.time}`;
-      aud.play().catch(()=>{});
-    }
-  } catch {}
-}, 5000);
-
-const leave = () => { quiet(); v.pause(); aud.pause(); };
-$('#back').onclick = () => { leave(); showLib(); };
-$('#tBack').onclick = showLib;
-$('#home').onclick = () => { if (!views.play.hidden) leave(); showLib(); };
-$('#epsBtn').onclick = () => { leave(); showTitle(cur.t); };
-$('#nextBtn').onclick = () => { const n = nextEpisode(); if (n) send({ type: 'load', video: n.file }); };
-
-// Obsługa przycisku zakończenia seansu dla wszystkich
-$('#endSessionBtn').onclick = async () => {
-  leave();
-  await fetch('/api/end', { method: 'POST' }).catch(() => {});
-  cur = null;
-  showLib();
-};
-
-document.querySelectorAll('.resumeBtn').forEach(b => b.onclick = async () => { showPlay(); applyTiming(await getState(), 0.2); });
-
-$('#q').oninput = renderLibrary;
 $('#sortSelect').onchange = renderLibrary;
 
-loadLibrary().then(connect);
+$('#langBtn').onclick = () => {
+  setLanguage(curLang === 'pl' ? 'en' : 'pl');
+};
+
+$('#themeBtn').onclick = () => {
+  setTheme(curTheme === 'dark' ? 'light' : 'dark');
+};
+
+$('#manageProfilesToggle').onclick = () => {
+  isManagingProfiles = !isManagingProfiles;
+  $('#manageProfilesToggle').textContent = isManagingProfiles ? t('done') : t('manageProfiles');
+  renderProfilesList();
+};
+
+$('#profileBtn').onclick = (e) => {
+  e.stopPropagation();
+  const d = $('#profileDropdown');
+  d.hidden = !d.hidden;
+  if (!d.hidden) refreshCacheStats();
+};
+document.addEventListener('click', () => { $('#profileDropdown').hidden = true; });
+$('#profileDropdown').onclick = e => e.stopPropagation();
+
+$('#switchProfBtn').onclick = () => {
+  $('#profileDropdown').hidden = true;
+  showProfilesModal(false);
+};
+$('#manageProfBtn').onclick = () => {
+  $('#profileDropdown').hidden = true;
+  showProfilesModal(false);
+  isManagingProfiles = true;
+  $('#manageProfilesToggle').textContent = t('done');
+  renderProfilesList();
+};
+
+$('#clearCacheBtn').onclick = async () => {
+  try {
+    const res = await (await fetch('/api/cache', { method: 'POST' })).json();
+    await refreshCacheStats();
+    toast(t('cacheCleared').replace('{size}', res.formatted || '0 MB'));
+  } catch {}
+};
+
+let currentPosterTargetId = null;
+
+$('#changePosterBtn').onclick = () => {
+  if (!currentSubItem) return;
+  currentPosterTargetId = currentSubItem.id;
+  $('#posterUrlInput').value = '';
+  $('#posterModal').hidden = false;
+};
+
+$('#cancelPosterModalBtn').onclick = () => { $('#posterModal').hidden = true; };
+
+$('#modalChooseFileBtn').onclick = () => {
+  $('#posterFileInput').click();
+};
+
+$('#posterFileInput').onchange = (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file || !currentPosterTargetId) return;
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const res = await (await fetch('/api/poster?id=' + enc(currentPosterTargetId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: reader.result })
+      })).json();
+
+      if (res.success) {
+        toast(t('posterUpdated'));
+        $('#posterModal').hidden = true;
+        const freshPoster = res.poster;
+        $('#subPosterImg').src = freshPoster;
+        $('#subBackdrop').style.backgroundImage = `url("${freshPoster}")`;
+        $('#ambient').style.backgroundImage = `url("${freshPoster}")`;
+        loadLibrary();
+      }
+    } catch {}
+  };
+  reader.readAsDataURL(file);
+};
+
+$('#savePosterUrlBtn').onclick = async () => {
+  const url = $('#posterUrlInput').value.trim();
+  if (!url || !currentPosterTargetId) return;
+
+  try {
+    const res = await (await fetch('/api/poster?id=' + enc(currentPosterTargetId), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    })).json();
+
+    if (res.success) {
+      toast(t('posterUpdated'));
+      $('#posterModal').hidden = true;
+      const freshPoster = res.poster;
+      $('#subPosterImg').src = freshPoster;
+      $('#subBackdrop').style.backgroundImage = `url("${freshPoster}")`;
+      $('#ambient').style.backgroundImage = `url("${freshPoster}")`;
+      loadLibrary();
+    }
+  } catch {}
+};
+
+$('#livePill').onclick = () => {
+  if (partyState && partyState.active && partyState.video) {
+    startWatch(partyState.video, 'party');
+  }
+};
+
+$('#subpageBackBtn').onclick = () => { window.location.hash = '#/'; };
+
+window.addEventListener('beforeunload', () => saveWatchProgress());
+window.addEventListener('pagehide', () => saveWatchProgress());
+
+setTheme(curTheme);
+setLanguage(curLang);
+showProfilesModal(true);
+loadProfiles().then(loadLibrary).then(connect).then(handleRoute);
 </script>
 </body>
 </html>

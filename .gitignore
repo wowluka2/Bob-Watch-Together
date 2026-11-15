@@ -1,0 +1,9 @@
+node_modules/
+videos/
+.cache/
+profiles.json
+metadata.json
+.env
+.DS_Store
+.Thumbs.db
+*.log
