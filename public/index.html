@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Bob Watch Together</title>
 <link rel="stylesheet" href="/style.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#4db7ef">
 </head>
 <body>
 <div id="ambient"></div>
@@ -22,6 +24,8 @@
       <button class="nav-link active" id="navHome" data-i18n="home">Strona główna</button>
       <button class="nav-link" id="navMovies" data-i18n="movies">Filmy</button>
       <button class="nav-link" id="navSeries" data-i18n="series">Seriale</button>
+      <button class="nav-link" id="navFavorites" data-i18n="favorites">Ulubione</button>
+      <button class="nav-link" id="navWatchLater" data-i18n="watchLater">Do obejrzenia</button>
     </nav>
   </div>
 
@@ -47,23 +51,40 @@
       </button>
 
       <div class="dropdown-menu" id="profileDropdown" hidden>
-        <div class="dropdown-header">
-          <span data-i18n="activeProfile">Aktywny profil</span>
-          <strong id="dropdownProfName">Główny</strong>
-        </div>
-        <button class="dropdown-item" id="switchProfBtn">
-          <span>👥</span> <span data-i18n="switchProfile">Zmień profil</span>
-        </button>
-        <button class="dropdown-item" id="manageProfBtn">
-          <span>⚙️</span> <span data-i18n="manageProfiles">Zarządzaj profilami</span>
-        </button>
-        <div class="dropdown-divider"></div>
-        <div class="cache-info-box">
-          <div class="cache-info-text">
-            <span data-i18n="cacheStorage">Pamięć (.cache):</span>
-            <strong id="cacheSizeText">...</strong>
+        <div class="dropdown-columns">
+          <div class="dropdown-account">
+            <div class="dropdown-header">
+              <span id="accountName">Konto</span>
+              <strong id="dropdownProfName">Główny</strong>
+            </div>
+            <button class="dropdown-item" id="switchProfBtn">
+              <span>👥</span> <span data-i18n="switchProfile">Zmień profil</span>
+            </button>
+            <button class="dropdown-item" id="manageProfBtn">
+              <span>⚙️</span> <span data-i18n="manageProfiles">Zarządzaj profilami</span>
+            </button>
+            <button class="dropdown-item" id="adminPanelBtn">
+              <span>🛡️</span> <span>Panel administratora</span>
+            </button>
+            <button class="dropdown-item" id="joinRoomBtn">
+              <span>🔗</span> <span data-i18n="joinByCode">Dołącz kodem zaproszenia</span>
+            </button>
+            <div class="dropdown-divider"></div>
+            <div class="cache-info-box">
+              <div class="cache-info-text">
+                <span data-i18n="cacheStorage">Pamięć (.cache):</span>
+                <strong id="cacheSizeText">...</strong>
+              </div>
+              <button class="cache-clean-btn" id="clearCacheBtn" data-i18n="clearCache">Wyczyść pamięć</button>
+            </div>
+            <button class="dropdown-item logout-item" id="logoutBtn">
+              <span>🚪</span> <span data-i18n="logout">Wyloguj konto</span>
+            </button>
           </div>
-          <button class="cache-clean-btn" id="clearCacheBtn" data-i18n="clearCache">Wyczyść pamięć</button>
+          <div class="dropdown-profile-list">
+            <span class="dropdown-column-label" data-i18n="profiles">Profile</span>
+            <div id="dropdownProfiles"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -95,6 +116,7 @@
         </button>
       </div>
     </div>
+    <div class="hero-dots" id="heroDots" aria-label="Wybierz wyróżniony banner"></div>
   </section>
 
   <section id="continueSection" hidden>
@@ -128,6 +150,7 @@
 
   <p id="browseNote" style="color: var(--text-dim); margin-bottom: 16px;"></p>
   <div class="media-grid" id="mediaGrid"></div>
+  <p class="media-credit" id="mediaCredit" data-i18n="imageCredit" hidden>Artwork: TMDb. Not endorsed or certified by TMDb.</p>
 </main>
 
 <!-- =====================================================================
@@ -169,6 +192,8 @@
         <button class="btn btn-secondary" id="subPartyPlayBtn">
           <span>👥</span> <span id="subPartyPlayText" data-i18n="watchParty">Wspólny seans</span>
         </button>
+        <button class="btn btn-ghost" id="subFavoriteBtn" type="button"></button>
+        <button class="btn btn-ghost" id="subWatchLaterBtn" type="button"></button>
         <button class="btn btn-ghost" id="subToggleWatchedBtn" hidden>
           <span id="subToggleWatchedIcon">✓</span> <span id="subToggleWatchedText">Oznacz jako obejrzane</span>
         </button>
@@ -176,6 +201,7 @@
 
       <div class="title-plot-box">
         <div class="title-plot-heading" data-i18n="synopsis">Opis fabuły (IMDb)</div>
+        <p id="subMetadataStatus" class="metadata-status" role="status" aria-live="polite" hidden></p>
         <p class="title-plot-text" id="subPlot"></p>
       </div>
 
@@ -197,6 +223,13 @@
   </div>
 
   <section id="seriesEpisodesBlock" hidden>
+    <div class="episodes-section-heading">
+      <div>
+        <p class="eyebrow" data-i18n="seriesEpisodes">Odcinki</p>
+        <h2 id="episodesTitle"></h2>
+      </div>
+      <span id="episodesCount"></span>
+    </div>
     <div class="season-selector" id="seasonTabs"></div>
     <div class="episodes-list" id="episodesList"></div>
   </section>
@@ -207,8 +240,8 @@
 ===================================================================== -->
 <main id="playView" hidden>
   <div class="player-top-bar">
-    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-      <button class="btn btn-ghost" id="playerBackBtn">‹ <span data-i18n="back">Wróć</span></button>
+    <div class="player-heading">
+      <button class="player-icon-btn player-close-btn" id="playerBackBtn" aria-label="Close player" title="Close">×</button>
       <div class="player-title-info">
         <h2 id="playerTitle"></h2>
         <p id="playerSubtitle"></p>
@@ -216,18 +249,17 @@
     </div>
 
     <div class="player-top-actions">
-      <button class="btn btn-ghost" id="playerModeBtn" style="font-size: 13px;">
+      <span class="player-viewers" id="viewersCount"></span>
+      <button class="btn btn-ghost player-mode-btn" id="playerModeBtn">
         <span id="playerModeIcon">👤</span> <span id="playerModeText">Tryb solo</span>
       </button>
-
-      <span style="font-size: 13px; color: var(--text-muted); align-self: center;" id="viewersCount"></span>
-      <button class="btn btn-ghost" id="playerNextBtn" hidden data-i18n="nextEpisode">Następny ›</button>
+      <button class="btn btn-ghost" id="inviteRoomBtn" type="button" data-i18n="invite">🔗 Zaproś</button>
       <button class="btn btn-danger" id="playerEndBtn" data-i18n="endSession">Zakończ seans</button>
     </div>
   </div>
 
   <div class="player-screen">
-    <video id="v" muted playsinline preload="auto" controls></video>
+    <video id="v" muted playsinline preload="auto"></video>
     <audio id="aud" preload="auto"></audio>
     <div class="player-veil" id="joinPrompt" hidden>
       <div>
@@ -235,12 +267,36 @@
         <button class="btn btn-primary" id="joinBtn" data-i18n="join">Dołącz</button>
       </div>
     </div>
+    <div class="player-chrome">
+      <div class="player-seek-row">
+        <span id="playerCurrentTime">0:00</span>
+        <input id="playerSeek" type="range" min="0" max="1000" step="1" value="0" aria-label="Seek">
+        <span id="playerDuration">0:00</span>
+      </div>
+      <div class="player-toolbar">
+        <div class="player-toolbar-group">
+          <button class="player-icon-btn player-main-toggle" id="playerToggleBtn" aria-label="Pause" title="Pause">Ⅱ</button>
+          <button class="player-icon-btn" id="playerRewindBtn" aria-label="Back 10 seconds" title="Back 10 seconds">↶<small>10</small></button>
+          <button class="player-icon-btn" id="playerForwardBtn" aria-label="Forward 10 seconds" title="Forward 10 seconds">↷<small>10</small></button>
+          <button class="btn btn-ghost player-next-btn" id="playerNextBtn" hidden data-i18n="nextEpisode">Następny odcinek ›</button>
+        </div>
+        <div class="player-toolbar-group">
+          <button class="player-icon-btn player-chat-toggle" id="playerChatToggle" aria-label="Toggle watch chat" title="Chat">▤</button>
+          <button class="player-icon-btn" id="playerSettingsBtn" aria-label="Playback settings" title="Settings">⚙</button>
+          <button class="player-icon-btn" id="playerFullscreenBtn" aria-label="Toggle fullscreen" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="player-controls-panel">
+  <div class="player-controls-panel" id="playerSettingsPanel" hidden>
     <label>
       <span data-i18n="audioTrack">Ścieżka dźwiękowa</span>
       <select id="aSel"></select>
+    </label>
+    <label>
+      <span>Jakość wideo</span>
+      <select id="qSel"></select>
     </label>
     <label>
       <span data-i18n="volume">Głośność</span>
@@ -260,13 +316,66 @@
     </label>
   </div>
   <p id="audioNote" style="font-size: 13px; color: var(--text-muted); margin-top: 10px;"></p>
+  <div class="party-chat" id="partyChatPanel" hidden>
+    <div class="party-chat-head"><strong>Czat seansu</strong><button id="partyChatToggle" type="button">Ukryj</button></div>
+    <div id="partyChatMessages" class="party-chat-messages"></div>
+    <form id="partyChatForm" class="party-chat-form">
+      <input id="partyChatInput" maxlength="1000" placeholder="Napisz wiadomość…" autocomplete="off">
+      <button type="submit">Wyślij</button>
+    </form>
+  </div>
   <p id="playerWarn" style="font-size: 13px; color: var(--danger); margin-top: 6px;"></p>
 </main>
 
 <!-- =====================================================================
+     ACCOUNT AUTHENTICATION
+===================================================================== -->
+<div class="modal-overlay" id="authModal">
+  <div class="dialog-box auth-dialog">
+    <h2 id="authTitle" data-i18n="login">Zaloguj się</h2>
+    <p id="authDescription" data-i18n="authLoginDescription">Zaloguj się, aby otworzyć swoje profile i listy oglądania.</p>
+    <form id="authForm">
+      <label for="authUsername" data-i18n="username">Login</label>
+      <input id="authUsername" name="username" type="text" minlength="3" maxlength="32" autocomplete="username" required>
+      <label for="authPassword" data-i18n="password">Hasło</label>
+      <input id="authPassword" name="password" type="password" maxlength="256" autocomplete="current-password" required>
+      <label class="remember-row"><input id="rememberMe" type="checkbox" checked> <span data-i18n="rememberMe">Zapamiętaj mnie na tym urządzeniu (30 dni)</span></label>
+      <p class="auth-error" id="authError" role="alert" hidden></p>
+      <button class="btn btn-primary" id="authSubmit" type="submit" data-i18n="login">Zaloguj</button>
+    </form>
+    <button class="auth-switch" id="authSwitch" type="button" data-i18n="noAccount">Nie masz konta? Utwórz konto</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="inviteModal" hidden>
+  <div class="dialog-box">
+    <h3 data-i18n="inviteTitle">Zaproszenie do seansu</h3>
+    <p data-i18n="inviteDescription">Kod działa przez 24 godziny i może dołączyć do niego maksymalnie 20 kont.</p>
+    <div class="invite-code" id="inviteCode"></div>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" id="copyInviteBtn" type="button" data-i18n="copyCode">Kopiuj kod</button>
+      <button class="btn btn-primary" id="closeInviteBtn" type="button">Gotowe</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="joinModal" hidden>
+  <form class="dialog-box" id="roomJoinForm">
+    <h3 data-i18n="joinSession">Dołącz do seansu</h3>
+    <label for="inviteCodeInput" data-i18n="inviteCode">Kod zaproszenia</label>
+    <input id="inviteCodeInput" type="text" maxlength="16" autocomplete="off" required>
+    <p class="auth-error" id="joinError" role="alert" hidden></p>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" id="cancelJoinBtn" type="button">Anuluj</button>
+      <button class="btn btn-primary" type="submit" data-i18n="join">Dołącz</button>
+    </div>
+  </form>
+</div>
+
+<!-- =====================================================================
      PROFILES SELECTION MODAL
 ===================================================================== -->
-<div class="modal-overlay" id="profilesModal">
+<div class="modal-overlay" id="profilesModal" hidden>
   <div class="profiles-modal" id="profilesModalContent">
     <h2 class="profiles-title" data-i18n="whoIsWatching">Kto ogląda?</h2>
     <div class="profiles-row" id="profilesRow"></div>
@@ -370,10 +479,42 @@ const I18N = {
     home: "Strona główna",
     movies: "Filmy",
     series: "Seriale",
+    favorites: "Ulubione",
+    watchLater: "Do obejrzenia",
+    addToFavorites: "♡ Dodaj do ulubionych",
+    removeFromFavorites: "♥ Usuń z ulubionych",
+    addToWatchLater: "＋ Do obejrzenia",
+    removeFromWatchLater: "✓ Usuń z Do obejrzenia",
+    invite: "🔗 Zaproś",
+    joinByCode: "Dołącz kodem zaproszenia",
+    logout: "Wyloguj konto",
+    username: "Login",
+    password: "Hasło",
+    login: "Zaloguj się",
+    register: "Utwórz konto",
+    authLoginDescription: "Zaloguj się, aby otworzyć swoje profile i listy oglądania.",
+    authRegisterDescription: "Załóż konto, a następnie utwórz osobne profile dla domowników.",
+    noAccount: "Nie masz konta? Utwórz konto",
+    hasAccount: "Masz już konto? Zaloguj się",
+    rememberMe: "Zapamiętaj mnie na tym urządzeniu (30 dni)",
+    inviteTitle: "Zaproszenie do seansu",
+    inviteDescription: "Kod działa przez 24 godziny i może dołączyć do niego maksymalnie 20 kont.",
+    copyCode: "Kopiuj kod",
+    joinSession: "Dołącz do seansu",
+    inviteCode: "Kod zaproszenia",
     all: "Wszystko",
     playNow: "Oglądaj teraz",
     moreInfo: "Więcej informacji",
     continueWatching: "Kontynuuj oglądanie",
+    recommendedForYou: "Polecane dla Ciebie",
+    popular: "Popularne w Twojej bibliotece",
+    profiles: "Profile",
+    seeAll: "Zobacz wszystko",
+    seriesEpisodes: "Odcinki",
+    imageCredit: "Grafiki: TMDb. Serwis nie jest popierany ani certyfikowany przez TMDb.",
+    loadingMetadata: "Pobieranie informacji o tytule…",
+    metadataUnavailable: "Nie znaleziono dodatkowych informacji dla tego tytułu.",
+    metadataFailed: "Nie udało się pobrać informacji o tytule.",
     searchPlaceholder: "Szukaj filmów i seriali…",
     sortImdbDesc: "Ocena IMDb: Od najwyższej",
     sortDateNew: "Premiera: Najnowsze",
@@ -457,10 +598,42 @@ const I18N = {
     home: "Home",
     movies: "Movies",
     series: "TV Shows",
+    favorites: "Favorites",
+    watchLater: "Watch Later",
+    addToFavorites: "♡ Add to Favorites",
+    removeFromFavorites: "♥ Remove from Favorites",
+    addToWatchLater: "＋ Watch Later",
+    removeFromWatchLater: "✓ Remove from Watch Later",
+    invite: "🔗 Invite",
+    joinByCode: "Join with invite code",
+    logout: "Log out",
+    username: "Username",
+    password: "Password",
+    login: "Log in",
+    register: "Create account",
+    authLoginDescription: "Log in to open your profiles and watch lists.",
+    authRegisterDescription: "Create an account, then add separate profiles for your household.",
+    noAccount: "New here? Create an account",
+    hasAccount: "Already have an account? Log in",
+    rememberMe: "Remember me on this device (30 days)",
+    inviteTitle: "Watch session invitation",
+    inviteDescription: "The code expires in 24 hours and can be used by up to 20 accounts.",
+    copyCode: "Copy code",
+    joinSession: "Join a session",
+    inviteCode: "Invite code",
     all: "All",
     playNow: "Watch Now",
     moreInfo: "More Info",
     continueWatching: "Continue Watching",
+    recommendedForYou: "Recommended for you",
+    popular: "Popular in your library",
+    profiles: "Profiles",
+    seeAll: "See all",
+    seriesEpisodes: "Episodes",
+    imageCredit: "Artwork: TMDb. Not endorsed or certified by TMDb.",
+    loadingMetadata: "Loading title information…",
+    metadataUnavailable: "No additional information was found for this title.",
+    metadataFailed: "Could not load title information.",
     searchPlaceholder: "Search movies & shows…",
     sortImdbDesc: "IMDb Rating: Highest",
     sortDateNew: "Release: Newest",
@@ -566,6 +739,7 @@ function setLanguage(lang) {
   if ($('#searchInput')) $('#searchInput').placeholder = t('searchPlaceholder');
 
   renderCurrentView();
+  if (typeof authMode !== 'undefined') setAuthMode(authMode);
 }
 
 function detectTheme() {
@@ -583,11 +757,9 @@ function setTheme(theme) {
 }
 
 let lib = [], cur = null, token = 0;
-let profiles = [
-  { id: 'prof_main', name: 'Główny', avatar: '🍿', color: '#00a8e1', history: {} },
-  { id: 'prof_bob', name: 'Bob', avatar: '🎬', color: '#e50914', history: {} }
-];
-let activeProfile = profiles[0];
+let profiles = [];
+let activeProfile = null;
+let authUser = null;
 let isManagingProfiles = false, editingProfId = null;
 let currentFilter = 'all';
 let cacheStats = null;
@@ -596,46 +768,40 @@ let partyState = null;
 
 const AVATARS = ['🍿', '🎬', '🚀', '🐺', '👑', '🧙‍♂️', '🐱', '🎮', '🍕', '👻', '🕶️', '🤖'];
 
-const send = a => fetch('/api/action', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    ...a,
-    id: myId,
-    profileId: activeProfile ? activeProfile.id : null,
-    profileName: activeProfile ? activeProfile.name : 'Gość',
-    mode: clientWatchMode
-  })
-}).catch(() => {});
+const send = async a => {
+  try {
+    const response = await fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...a,
+        id: myId,
+        profileId: activeProfile ? activeProfile.id : null,
+        profileName: activeProfile ? activeProfile.name : 'Gość',
+        mode: clientWatchMode
+      })
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      toast(result.error || 'Nie udało się wykonać akcji.');
+    }
+    return response.ok;
+  } catch (error) {
+    toast(error.message || 'Nie można połączyć się z serwerem.');
+    return false;
+  }
+};
 
 const getState = async () => (await fetch('/api/state')).json();
 
 async function loadProfiles() {
-  try {
-    const cached = localStorage.getItem('bob_profiles_cache');
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length) profiles = parsed;
-    }
-  } catch {}
-
   const savedId = localStorage.getItem('bob_profile_id');
-  activeProfile = profiles.find(p => p.id === savedId) || profiles[0];
-
+  const response = await fetch('/api/profiles');
+  if (!response.ok) throw new Error('Nie udało się pobrać profili konta.');
+  profiles = await response.json();
+  localStorage.removeItem('bob_profiles_cache');
+  activeProfile = profiles.find(p => p.id === savedId) || profiles[0] || null;
   showProfilesModal(true);
-
-  try {
-    const res = await (await fetch('/api/profiles')).json();
-    if (Array.isArray(res) && res.length) {
-      profiles = res;
-      localStorage.setItem('bob_profiles_cache', JSON.stringify(res));
-      activeProfile = profiles.find(p => p.id === savedId) || profiles[0];
-      const modal = $('#profilesModal');
-      if (modal && !modal.hidden) {
-        renderProfilesList(true);
-      }
-    }
-  } catch {}
 }
 
 function updateProfileUI() {
@@ -643,8 +809,42 @@ function updateProfileUI() {
   if ($('#activeAvatar')) $('#activeAvatar').textContent = activeProfile.avatar || '🍿';
   if ($('#activeProfileName')) $('#activeProfileName').textContent = activeProfile.name || 'Główny';
   if ($('#dropdownProfName')) $('#dropdownProfName').textContent = activeProfile.name || 'Główny';
+  if ($('#accountName')) $('#accountName').textContent = `Konto: ${authUser?.username || ''}`;
+  renderDropdownProfiles();
   renderContinueWatching();
   renderCurrentView();
+}
+
+function renderDropdownProfiles() {
+  const list = $('#dropdownProfiles');
+  if (!list) return;
+  list.replaceChildren();
+  profiles.forEach(profile => {
+    const button = document.createElement('button');
+    button.className = 'dropdown-profile' + (profile.id === activeProfile?.id ? ' active' : '');
+    button.type = 'button';
+    const avatar = document.createElement('span');
+    avatar.className = 'dropdown-profile-avatar';
+    avatar.textContent = profile.avatar || '🍿';
+    const name = document.createElement('span');
+    name.className = 'dropdown-profile-name';
+    name.textContent = profile.name;
+    button.append(avatar, name);
+    if (profile.id === activeProfile?.id) {
+      const current = document.createElement('span');
+      current.className = 'dropdown-profile-check';
+      current.textContent = '✓';
+      button.appendChild(current);
+    }
+    button.onclick = () => {
+      if (profile.id === activeProfile?.id) return;
+      activeProfile = profile;
+      localStorage.setItem('bob_profile_id', profile.id);
+      $('#profileDropdown').hidden = true;
+      updateProfileUI();
+    };
+    list.appendChild(button);
+  });
 }
 
 function showProfilesModal(isStartup = false) {
@@ -768,33 +968,37 @@ function openEditProfileDialog(p) {
 
   $('#saveProfileBtn').onclick = async () => {
     const name = $('#profNameInput').value.trim() || 'Profil';
-    if (editingProfId) {
-      await fetch(`/api/profiles/${editingProfId}`, {
-        method: 'PUT',
+    try {
+      const response = await fetch(editingProfId ? `/api/profiles/${enc(editingProfId)}` : '/api/profiles', {
+        method: editingProfId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, avatar: selectedAvatar })
       });
-    } else {
-      await fetch('/api/profiles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, avatar: selectedAvatar })
-      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Nie udało się zapisać profilu.');
+      $('#editProfileModal').hidden = true;
+      await loadProfilesSilently();
+      renderProfilesList();
+      updateProfileUI();
+    } catch (error) {
+      toast(error.message);
     }
-    $('#editProfileModal').hidden = true;
-    await loadProfilesSilently();
-    renderProfilesList();
-    updateProfileUI();
   };
 
   $('#deleteProfileBtn').onclick = async () => {
     if (!editingProfId) return;
     if (confirm(curLang === 'pl' ? 'Czy na pewno chcesz usunąć ten profil?' : 'Are you sure you want to delete this profile?')) {
-      await fetch(`/api/profiles/${editingProfId}`, { method: 'DELETE' });
-      $('#editProfileModal').hidden = true;
-      await loadProfilesSilently();
-      renderProfilesList();
-      updateProfileUI();
+      try {
+        const response = await fetch(`/api/profiles/${enc(editingProfId)}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Nie udało się usunąć profilu.');
+        $('#editProfileModal').hidden = true;
+        await loadProfilesSilently();
+        renderProfilesList();
+        updateProfileUI();
+      } catch (error) {
+        toast(error.message);
+      }
     }
   };
 
@@ -804,11 +1008,10 @@ function openEditProfileDialog(p) {
 
 async function loadProfilesSilently() {
   try {
-    const res = await (await fetch('/api/profiles')).json();
-    if (Array.isArray(res) && res.length) {
-      profiles = res;
-      activeProfile = profiles.find(p => p.id === activeProfile?.id) || profiles[0];
-    }
+    const response = await fetch('/api/profiles');
+    if (!response.ok) throw new Error('Nie udało się odświeżyć profili.');
+    profiles = await response.json();
+    activeProfile = profiles.find(p => p.id === activeProfile?.id) || profiles[0] || null;
   } catch {}
 }
 
@@ -896,6 +1099,14 @@ function handleRoute() {
     currentFilter = 'series';
     updateCategoryTabs();
     showBrowseView();
+  } else if (hash === '#/favorites') {
+    currentFilter = 'favorites';
+    updateCategoryTabs();
+    showBrowseView();
+  } else if (hash === '#/watch-later') {
+    currentFilter = 'watchLater';
+    updateCategoryTabs();
+    showBrowseView();
   } else {
     currentFilter = 'all';
     updateCategoryTabs();
@@ -912,10 +1123,13 @@ function updateCategoryTabs() {
     if (currentFilter === 'movie' && l.id === 'navMovies') l.classList.add('active');
     else if (currentFilter === 'series' && l.id === 'navSeries') l.classList.add('active');
     else if (currentFilter === 'all' && l.id === 'navHome') l.classList.add('active');
+    else if (currentFilter === 'favorites' && l.id === 'navFavorites') l.classList.add('active');
+    else if (currentFilter === 'watchLater' && l.id === 'navWatchLater') l.classList.add('active');
   });
 }
 
 function showBrowseView() {
+  document.body.classList.remove('title-page');
   $('#browseView').hidden = false;
   $('#subpageView').hidden = true;
   $('#playView').hidden = true;
@@ -931,41 +1145,182 @@ function renderCurrentView() {
 
 window.addEventListener('hashchange', handleRoute);
 
-async function loadLibrary() {
+async function updateProfileList(list, titleId, enabled) {
+  if (!activeProfile) return;
   try {
-    const r = await (await fetch('/api/library')).json();
-    lib = r.items || [];
-    renderLibrary();
-    setupHeroSpotlight();
-  } catch (e) {
-    $('#browseNote').textContent = 'Błąd wczytywania biblioteki.';
+    const response = await fetch(`/api/profiles/${enc(activeProfile.id)}/lists`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ list, titleId, enabled }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Nie udało się zapisać listy.');
+    await loadProfilesSilently();
+    updateProfileUI();
+  } catch (error) {
+    toast(error.message);
   }
 }
 
-function setupHeroSpotlight() {
-  if (!lib.length) { $('#heroSpotlight').hidden = true; return; }
-  const top = [...lib].sort((a, b) => (parseFloat(b.imdb) || 0) - (parseFloat(a.imdb) || 0))[0];
-  if (!top) return;
+async function loadLibrary() {
+  try {
+    const response = await fetch('/api/library');
+    const r = await response.json();
+    if (!response.ok) throw new Error(r.error || 'Nie udało się wczytać biblioteki.');
+    lib = r.items || [];
+    renderLibrary();
+    setupHeroSpotlight();
+    updateArtworkCredit();
+    prefetchHeroArtwork();
+  } catch (e) {
+    $('#browseNote').textContent = e.message || 'Błąd wczytywania biblioteki.';
+  }
+}
 
-  $('#heroImg').src = top.poster;
+let heroItems = [];
+let heroIndex = 0;
+let heroTimer = null;
+const artworkRequests = new Set();
+const artworkLookups = new Set();
+const artworkObserver = 'IntersectionObserver' in window
+  ? new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      artworkObserver.unobserve(entry.target);
+      const item = lib.find(title => title.id === entry.target.dataset.titleId);
+      if (item && (!item.posterUrl || !item.backdropUrl)) loadHeroArtwork(item);
+    });
+  }, { rootMargin: '240px' })
+  : null;
+
+function applyArtworkToViews(item) {
+  document.querySelectorAll('.media-card, .continue-card').forEach(card => {
+    if (card.dataset.titleId !== item.id) return;
+    const image = card.querySelector('img');
+    if (!image) return;
+    image.onerror = () => { image.hidden = true; };
+    const artwork = item.backdropUrl || item.posterUrl || '';
+    image.hidden = !artwork;
+    if (artwork) image.src = artwork;
+  });
+  if (heroItems[heroIndex] === item) {
+    const image = $('#heroImg');
+    const heroArtwork = item.backdropUrl || item.posterUrl || '';
+    image.onerror = () => {
+      image.removeAttribute('src');
+      image.classList.add('artwork-missing');
+    };
+    image.classList.remove('artwork-missing');
+    if (heroArtwork) image.src = heroArtwork;
+  }
+  if (currentSubItem?.id === item.id && !$('#subpageView').hidden) renderSubpageContent(item);
+  updateArtworkCredit();
+}
+
+function updateArtworkCredit() {
+  const usesTmdbArtwork = lib.some(item =>
+    /^https:\/\/image\.tmdb\.org\//i.test(item.backdropUrl || '')
+    || /^https:\/\/image\.tmdb\.org\//i.test(item.posterUrl || ''));
+  $('#mediaCredit').hidden = !usesTmdbArtwork;
+}
+
+function showHeroItem(index) {
+  if (!heroItems.length) return;
+  heroIndex = (index + heroItems.length) % heroItems.length;
+  const top = heroItems[heroIndex];
+  const spotlight = $('#heroSpotlight');
+  const heroImage = $('#heroImg');
+  spotlight.style.opacity = '0';
+  heroImage.classList.remove('hero-slide-in');
+  void heroImage.offsetWidth;
+  const imageUrl = top.backdropUrl || top.posterUrl;
+  heroImage.onerror = () => {
+    heroImage.removeAttribute('src');
+    heroImage.classList.add('artwork-missing');
+  };
+  if (imageUrl) heroImage.src = imageUrl;
+  else {
+    heroImage.removeAttribute('src');
+    heroImage.classList.add('artwork-missing');
+  }
+  if (!top.posterUrl || !top.backdropUrl) loadHeroArtwork(top);
+  heroImage.classList.add('hero-slide-in');
   $('#heroTitle').textContent = top.title;
   $('#heroImdb').textContent = top.imdb && top.imdb !== '—' ? `IMDb ${top.imdb}` : 'IMDb';
   $('#heroYear').textContent = top.released || '';
   $('#heroDuration').textContent = top.kind === 'series' ? `${top.episodes.length} ${t('episodes')}` : fmtDur(top.duration);
-  
-  const hasPl = (top.audio || []).some(a => a.pl);
-  $('#heroAudioPl').hidden = !hasPl;
-
+  $('#heroAudioPl').hidden = !(top.audio || []).some(a => a.pl);
   const desc = curLang === 'pl' ? (top.plotPl || top.plot || top.plotEn) : (top.plotEn || top.plot || top.plotPl);
   $('#heroPlot').textContent = desc || '';
-
   $('#heroPlayBtn').onclick = () => {
     if (top.kind === 'series') window.location.hash = '#/title/' + enc(top.id);
     else startWatch(top.episodes[0].file, 'solo');
   };
   $('#heroDetailsBtn').onclick = () => { window.location.hash = '#/title/' + enc(top.id); };
+  [...$('#heroDots').children].forEach((dot, i) => dot.classList.toggle('active', i === heroIndex));
+  requestAnimationFrame(() => spotlight.style.opacity = '1');
+}
 
+async function loadHeroArtwork(item) {
+  if ((item.posterUrl && item.backdropUrl) || artworkRequests.has(item.id) || artworkLookups.has(item.id)) return;
+  artworkRequests.add(item.id);
+  try {
+    const response = await fetch(`/api/artwork?id=${enc(item.id)}`);
+    if (!response.ok) throw new Error(`Artwork lookup failed (${response.status}).`);
+    const artwork = await response.json();
+    artworkLookups.add(item.id);
+    item.backdropUrl = artwork.backdropUrl || item.backdropUrl || '';
+    item.posterUrl = artwork.posterUrl || item.posterUrl || '';
+    applyArtworkToViews(item);
+  } catch (error) {
+    console.warn(`Artwork lookup failed for ${item.title}:`, error);
+  } finally {
+    artworkRequests.delete(item.id);
+  }
+}
+
+function prefetchHeroArtwork() {
+  heroItems.slice(0, 3).forEach(item => loadHeroArtwork(item));
+}
+
+function setupHeroSpotlight() {
+  if (!lib.length) { $('#heroSpotlight').hidden = true; return; }
+  heroItems = [...lib]
+    .sort((a, b) => (parseFloat(b.imdb) || 0) - (parseFloat(a.imdb) || 0))
+    .slice(0, 5);
+  const dots = $('#heroDots');
+  dots.replaceChildren();
+  heroItems.forEach((item, index) => {
+    const dot = document.createElement('button');
+    dot.className = 'hero-dot';
+    dot.setAttribute('aria-label', `Pokaż ${item.title}`);
+    dot.onclick = () => {
+      showHeroItem(index);
+      restartHeroTimer();
+    };
+    dots.appendChild(dot);
+  });
+  heroIndex = 0;
+  showHeroItem(0);
   $('#heroSpotlight').hidden = false;
+  restartHeroTimer();
+}
+
+const heroSpotlight = $('#heroSpotlight');
+heroSpotlight.addEventListener('mouseenter', () => {
+  if (heroTimer) clearInterval(heroTimer);
+});
+heroSpotlight.addEventListener('mouseleave', restartHeroTimer);
+heroSpotlight.addEventListener('touchstart', () => {
+  if (heroTimer) clearInterval(heroTimer);
+}, { passive: true });
+heroSpotlight.addEventListener('touchend', restartHeroTimer);
+
+function restartHeroTimer() {
+  if (heroTimer) clearInterval(heroTimer);
+  if (heroItems.length > 1) {
+    heroTimer = setInterval(() => showHeroItem(heroIndex + 1), 7000);
+  }
 }
 
 function renderLibrary() {
@@ -973,10 +1328,16 @@ function renderLibrary() {
   const sortBy = $('#sortSelect') ? $('#sortSelect').value : 'imdbDesc';
   const grid = $('#mediaGrid');
   if (!grid) return;
+  const personalList = currentFilter === 'favorites' || currentFilter === 'watchLater';
+  $('#heroSpotlight').hidden = personalList || !heroItems.length;
+  if (personalList) $('#continueSection').hidden = true;
+  else renderContinueWatching();
   grid.replaceChildren();
 
   let items = lib.filter(m => {
-    if (currentFilter !== 'all' && m.kind !== currentFilter) return false;
+    if (currentFilter === 'favorites' && !(activeProfile?.favorites || []).includes(m.id)) return false;
+    if (currentFilter === 'watchLater' && !(activeProfile?.watchLater || []).includes(m.id)) return false;
+    if (!['all', 'favorites', 'watchLater'].includes(currentFilter) && m.kind !== currentFilter) return false;
     if (query && !m.title.toLowerCase().includes(query)) return false;
     return true;
   });
@@ -991,86 +1352,119 @@ function renderLibrary() {
   });
 
   $('#browseNote').textContent = !lib.length ? t('emptyLib') : !items.length ? t('noResults') : '';
-
-  items.forEach(m => {
-    const card = document.createElement('div');
-    card.className = 'media-card';
-
-    const pWrap = document.createElement('div');
-    pWrap.className = 'poster-wrap';
-
-    const ph = document.createElement('span');
-    ph.className = 'poster-placeholder';
-    ph.textContent = m.title.charAt(0).toUpperCase();
-    pWrap.appendChild(ph);
-
-    const img = new Image();
-    img.loading = 'lazy';
-    img.src = m.poster;
-    img.onerror = () => img.remove();
-    pWrap.appendChild(img);
-
-    const hist = activeProfile && activeProfile.history;
-    const isMovieWatched = m.kind === 'movie' && hist && hist[m.episodes[0]?.file]?.finished;
-    if (isMovieWatched) {
-      const wBadge = document.createElement('span');
-      wBadge.className = 'badge-watched';
-      wBadge.style.position = 'absolute';
-      wBadge.style.bottom = '8px';
-      wBadge.style.left = '8px';
-      wBadge.textContent = '✓ ' + t('watched');
-      pWrap.appendChild(wBadge);
-    }
-
-    if (partyState && partyState.active && partyState.video && partyState.video.startsWith(m.id)) {
-      const live = document.createElement('span');
-      live.className = 'live-badge-card';
-      live.textContent = 'PARTY';
-      pWrap.appendChild(live);
-    }
-
-    if (m.imdb && m.imdb !== '—') {
-      const imdbBadge = document.createElement('span');
-      imdbBadge.className = 'imdb-badge-card';
-      imdbBadge.textContent = m.imdb;
-      pWrap.appendChild(imdbBadge);
-    }
-
-    const info = document.createElement('div');
-    info.className = 'card-info';
-
-    const title = document.createElement('strong');
-    title.className = 'card-title';
-    title.textContent = m.title;
-
-    const meta = document.createElement('div');
-    meta.className = 'card-meta';
-    const metaText = m.kind === 'series' ? `${m.episodes.length} ${t('episodes')}` : fmtDur(m.duration);
-    meta.textContent = [m.released !== '—' ? m.released : '', metaText].filter(Boolean).join(' · ');
-
-    const langs = document.createElement('div');
-    langs.className = 'card-langs';
-    const seen = new Map();
-    (m.audio || []).forEach(a => { if (!seen.has(a.code) || a.pl) seen.set(a.code, a.pl); });
-    for (const [code, pl] of seen) {
-      const badge = document.createElement('span');
-      badge.className = 'badge-pill' + (pl ? ' pl' : '');
-      badge.textContent = code;
-      langs.appendChild(badge);
-    }
-
-    info.appendChild(title);
-    info.appendChild(meta);
-    if (langs.children.length) info.appendChild(langs);
-
-    card.appendChild(pWrap);
-    card.appendChild(info);
-
-    card.onclick = () => { window.location.hash = '#/title/' + enc(m.id); };
-    grid.appendChild(card);
-  });
+  const curated = currentFilter === 'all' && !query;
+  grid.classList.toggle('is-curated', curated);
+  if (curated) {
+    const rated = [...items].sort((a, b) => (parseFloat(b.imdb) || 0) - (parseFloat(a.imdb) || 0));
+    const rows = [
+      { title: t('recommendedForYou'), items: rated.slice(0, 12) },
+      { title: t('movies'), filter: 'movie', items: items.filter(item => item.kind === 'movie') },
+      { title: t('series'), filter: 'series', items: items.filter(item => item.kind === 'series') },
+    ].filter(row => row.items.length);
+    rows.forEach(row => {
+      const section = document.createElement('section');
+      section.className = 'library-row';
+      const rowHeader = document.createElement('div');
+      rowHeader.className = 'library-row-header';
+      const heading = document.createElement('h2');
+      heading.className = 'library-row-heading';
+      heading.textContent = row.title;
+      rowHeader.appendChild(heading);
+      if (row.filter) {
+        const seeAll = document.createElement('button');
+        seeAll.className = 'library-row-more';
+        seeAll.type = 'button';
+        seeAll.textContent = `${t('seeAll')} ›`;
+        seeAll.onclick = () => { window.location.hash = row.filter === 'movie' ? '#/movies' : '#/series'; };
+        rowHeader.appendChild(seeAll);
+      }
+      const rail = document.createElement('div');
+      rail.className = 'media-grid media-rail';
+      row.items.forEach(item => rail.appendChild(createMediaCard(item)));
+      section.append(rowHeader, rail);
+      grid.appendChild(section);
+    });
+  } else {
+    grid.classList.remove('is-curated');
+    items.forEach(item => grid.appendChild(createMediaCard(item)));
+  }
 
   renderContinueWatching();
+}
+
+function createMediaCard(item) {
+  const card = document.createElement('button');
+  card.className = 'media-card';
+  card.type = 'button';
+  card.dataset.titleId = item.id;
+
+  const pWrap = document.createElement('span');
+  pWrap.className = 'poster-wrap';
+  pWrap.dataset.titleId = item.id;
+  const ph = document.createElement('span');
+  ph.className = 'poster-placeholder';
+  ph.textContent = item.title.charAt(0).toUpperCase();
+  pWrap.appendChild(ph);
+
+  const img = new Image();
+  img.loading = 'lazy';
+  img.hidden = true;
+  img.onerror = () => { img.hidden = true; };
+  const artworkUrl = item.backdropUrl || item.posterUrl || '';
+  if (artworkUrl) {
+    img.src = artworkUrl;
+    img.hidden = false;
+  }
+  pWrap.appendChild(img);
+  if (artworkObserver) artworkObserver.observe(pWrap);
+  else if (!artworkUrl) loadHeroArtwork(item);
+
+  const history = activeProfile?.history;
+  if (item.kind === 'movie' && history?.[item.episodes[0]?.file]?.finished) {
+    const watched = document.createElement('span');
+    watched.className = 'badge-watched';
+    watched.textContent = '✓ ' + t('watched');
+    pWrap.appendChild(watched);
+  }
+  if (partyState?.active && partyState.video?.startsWith(item.id)) {
+    const live = document.createElement('span');
+    live.className = 'live-badge-card';
+    live.textContent = 'PARTY';
+    pWrap.appendChild(live);
+  }
+  if (item.imdb && item.imdb !== '—') {
+    const rating = document.createElement('span');
+    rating.className = 'imdb-badge-card';
+    rating.textContent = item.imdb;
+    pWrap.appendChild(rating);
+  }
+
+  const info = document.createElement('span');
+  info.className = 'card-info';
+  const title = document.createElement('strong');
+  title.className = 'card-title';
+  title.textContent = item.title;
+  const meta = document.createElement('span');
+  meta.className = 'card-meta';
+  const metaText = item.kind === 'series' ? `${item.episodes.length} ${t('episodes')}` : fmtDur(item.duration);
+  meta.textContent = [item.released !== '—' ? item.released : '', metaText].filter(Boolean).join(' · ');
+  const languages = document.createElement('span');
+  languages.className = 'card-langs';
+  const seen = new Map();
+  (item.audio || []).forEach(audio => {
+    if (!seen.has(audio.code) || audio.pl) seen.set(audio.code, audio.pl);
+  });
+  for (const [code, polish] of seen) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-pill' + (polish ? ' pl' : '');
+    badge.textContent = code;
+    languages.appendChild(badge);
+  }
+  info.append(title, meta);
+  if (languages.children.length) info.appendChild(languages);
+  card.append(pWrap, info);
+  card.onclick = () => { window.location.hash = '#/title/' + enc(item.id); };
+  return card;
 }
 
 function renderContinueWatching() {
@@ -1101,8 +1495,15 @@ function renderContinueWatching() {
     thumb.className = 'continue-thumb';
     if (titleObj) {
       const img = new Image();
-      img.src = titleObj.poster;
+      img.hidden = true;
+      img.onerror = () => { img.hidden = true; };
+      const posterUrl = titleObj.backdropUrl || titleObj.posterUrl;
+      if (posterUrl) {
+        img.src = posterUrl;
+        img.hidden = false;
+      } else if (!artworkObserver) loadHeroArtwork(titleObj);
       thumb.appendChild(img);
+      card.dataset.titleId = titleObj.id;
     }
     const prog = document.createElement('div');
     prog.className = 'continue-progress';
@@ -1128,6 +1529,10 @@ function renderContinueWatching() {
     info.appendChild(sub);
     card.appendChild(thumb);
     card.appendChild(info);
+    if (titleObj && artworkObserver) {
+      thumb.dataset.titleId = titleObj.id;
+      artworkObserver.observe(thumb);
+    }
 
     card.onclick = () => { startWatch(h.file, 'solo'); };
     cont.appendChild(card);
@@ -1147,17 +1552,60 @@ async function showTitleSubpage(id) {
   if (!item) { window.location.hash = '#/'; return; }
 
   currentSubItem = item;
+  document.body.classList.add('title-page');
   $('#browseView').hidden = true;
   $('#playView').hidden = true;
   $('#subpageView').hidden = false;
 
   renderSubpageContent(item);
+  $('#subMetadataStatus').hidden = false;
+  $('#subMetadataStatus').textContent = t('loadingMetadata');
+  try {
+    const response = await fetch(`/api/title?id=${enc(id)}`);
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || t('metadataFailed'));
+    if (currentSubItem?.id !== id || window.location.hash !== `#/title/${enc(id)}`) return;
+    const apiEpisodes = Array.isArray(result.episodes) ? result.episodes : [];
+    const apiDetails = { ...result };
+    delete apiDetails.episodes;
+    const detailedItem = {
+      ...item,
+      ...apiDetails,
+      episodes: item.episodes.map(episode => ({
+        ...episode,
+        posterUrl: apiEpisodes.find(entry => entry.file === episode.file)?.posterUrl
+          || episode.posterUrl || result.posterUrl || '',
+      })),
+    };
+    lib = lib.map(entry => entry.id === id ? detailedItem : entry);
+    currentSubItem = detailedItem;
+    renderSubpageContent(detailedItem);
+    const hasMetadata = Boolean(
+      detailedItem.backdropUrl || detailedItem.posterUrl || detailedItem.plot
+      || detailedItem.plotPl || detailedItem.plotEn || detailedItem.year && detailedItem.year !== '—'
+      || detailedItem.imdb && detailedItem.imdb !== '—' || detailedItem.genre || detailedItem.actors
+    );
+    $('#subMetadataStatus').textContent = hasMetadata ? '' : t('metadataUnavailable');
+    $('#subMetadataStatus').hidden = hasMetadata;
+  } catch (error) {
+    if (currentSubItem?.id !== id || window.location.hash !== `#/title/${enc(id)}`) return;
+    $('#subMetadataStatus').textContent = error.message || t('metadataFailed');
+  }
 }
 
 function renderSubpageContent(item) {
-  $('#subBackdrop').style.backgroundImage = `url("${item.poster}")`;
-  $('#ambient').style.backgroundImage = `url("${item.poster}")`;
-  $('#subPosterImg').src = item.poster;
+  const backdrop = item.backdropUrl || item.posterUrl || '';
+  $('#subBackdrop').style.backgroundImage = 'none';
+  $('#ambient').style.backgroundImage = backdrop ? `url("${backdrop}")` : '';
+  const poster = item.posterUrl || '';
+  $('#subPosterImg').hidden = !poster;
+  $('#subPosterImg').onerror = () => { $('#subPosterImg').hidden = true; };
+  if (poster) $('#subPosterImg').src = poster;
+  else if (!artworkObserver) loadHeroArtwork(item);
+  if (artworkObserver && (!item.posterUrl || !item.backdropUrl)) {
+    artworkObserver.observe($('#subPosterImg').parentElement);
+    $('#subPosterImg').parentElement.dataset.titleId = item.id;
+  }
   $('#subTitle').textContent = item.title;
   $('#subImdb').textContent = item.imdb && item.imdb !== '—' ? `IMDb ${item.imdb}` : 'IMDb';
   $('#subYear').textContent = item.released || '';
@@ -1185,6 +1633,12 @@ function renderSubpageContent(item) {
   const firstFile = item.episodes[0].file;
   const isMovie = item.kind === 'movie';
   const movieH = isMovie && hist && hist[firstFile];
+  const isFavorite = (activeProfile?.favorites || []).includes(item.id);
+  const isWatchLater = (activeProfile?.watchLater || []).includes(item.id);
+  $('#subFavoriteBtn').textContent = isFavorite ? t('removeFromFavorites') : t('addToFavorites');
+  $('#subWatchLaterBtn').textContent = isWatchLater ? t('removeFromWatchLater') : t('addToWatchLater');
+  $('#subFavoriteBtn').onclick = () => updateProfileList('favorites', item.id, !isFavorite);
+  $('#subWatchLaterBtn').onclick = () => updateProfileList('watchLater', item.id, !isWatchLater);
 
   if (isMovie) {
     $('#subToggleWatchedBtn').hidden = false;
@@ -1240,6 +1694,8 @@ function renderSeriesEpisodes(item) {
   const epList = $('#episodesList');
   tabs.replaceChildren();
   epList.replaceChildren();
+  $('#episodesTitle').textContent = item.title;
+  $('#episodesCount').textContent = `${item.episodes.length} ${t('episodes')}`;
 
   const seasonsMap = new Map();
   item.episodes.forEach(e => {
@@ -1263,12 +1719,31 @@ function renderSeriesEpisodes(item) {
 
     eps.forEach(e => {
       const card = document.createElement('div');
+      card.setAttribute('role', 'button');
+      card.tabIndex = 0;
       const isNow = cur && cur.file === e.file;
       const h = hist && hist[e.file];
       const isWatched = h && h.finished;
       const isInProgress = h && !h.finished && h.time > 15;
 
       card.className = 'episode-card' + (isNow ? ' active-episode' : '');
+
+      const thumbnail = document.createElement('div');
+      thumbnail.className = 'episode-thumb';
+      const thumbnailImage = new Image();
+      thumbnailImage.loading = 'lazy';
+      thumbnailImage.alt = '';
+      thumbnailImage.onerror = () => { thumbnailImage.hidden = true; };
+      const thumbnailUrl = e.posterUrl || item.posterUrl || '';
+      if (thumbnailUrl) thumbnailImage.src = thumbnailUrl;
+      else thumbnailImage.hidden = true;
+      thumbnail.appendChild(thumbnailImage);
+      if (!thumbnailUrl) {
+        const placeholder = document.createElement('span');
+        placeholder.textContent = item.title.charAt(0).toUpperCase();
+        placeholder.setAttribute('aria-hidden', 'true');
+        thumbnail.appendChild(placeholder);
+      }
 
       const left = document.createElement('div');
       left.className = 'episode-left';
@@ -1339,6 +1814,7 @@ function renderSeriesEpisodes(item) {
       };
       right.appendChild(soloBtn);
 
+      card.appendChild(thumbnail);
       card.appendChild(left);
       card.appendChild(right);
 
@@ -1350,10 +1826,16 @@ function renderSeriesEpisodes(item) {
         const pct = Math.min(100, Math.round((h.time / (h.duration || 1)) * 100));
         progBar.style.width = pct + '%';
         progWrap.appendChild(progBar);
-        card.appendChild(progWrap);
+        thumbnail.appendChild(progWrap);
       }
 
       card.onclick = () => { startWatch(e.file, 'solo'); };
+      card.onkeydown = event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          startWatch(e.file, 'solo');
+        }
+      };
       epList.appendChild(card);
     });
   }
@@ -1371,8 +1853,13 @@ function renderSeriesEpisodes(item) {
 }
 
 function startWatch(file, mode = 'solo') {
+  const joiningExistingParty = mode === 'party' && partyState?.active && partyState.hostUserId !== authUser?.id;
+  if (joiningExistingParty && partyState.video !== file) {
+    toast('Tylko gospodarz może zmienić materiał w tym seansie.');
+    return;
+  }
   clientWatchMode = mode;
-  if (mode === 'party') {
+  if (mode === 'party' && !joiningExistingParty) {
     send({ type: 'load', video: file });
   }
   window.location.hash = `#/watch?v=${enc(file)}&mode=${mode}`;
@@ -1393,6 +1880,109 @@ const audKey = () => cur ? cur.file + '|' + audIdx() : '';
 const audAbs = () => audBase + (aud.currentTime || 0) - (audMode === 'live' ? LIVE_LAG : 0);
 const audTarget = () => Math.max(0, v.currentTime - audioOffset / 1000);
 const liveUrl = t => `/audio?name=${enc(cur.file)}&a=${audIdx()}&start=${t.toFixed(3)}`;
+let playerIdleTimer = null;
+
+function isPlayerFullscreen() {
+  return document.fullscreenElement === $('#playView')
+    || document.webkitFullscreenElement === $('#playView');
+}
+
+function showPlayerControls() {
+  $('#playView').classList.remove('player-idle');
+  clearTimeout(playerIdleTimer);
+  if (isPlayerFullscreen() && !v.paused) {
+    playerIdleTimer = setTimeout(() => {
+      if (isPlayerFullscreen() && !v.paused) $('#playView').classList.add('player-idle');
+    }, 3000);
+  }
+}
+
+$('#playView').addEventListener('pointermove', showPlayerControls);
+$('#playView').addEventListener('pointerdown', showPlayerControls);
+$('#playView').addEventListener('touchstart', showPlayerControls, { passive: true });
+document.addEventListener('fullscreenchange', () => {
+  const fullscreen = isPlayerFullscreen();
+  $('#playView').classList.toggle('player-fullscreen', fullscreen);
+  if (fullscreen) showPlayerControls();
+  else {
+    clearTimeout(playerIdleTimer);
+    $('#playView').classList.remove('player-idle');
+  }
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  const fullscreen = isPlayerFullscreen();
+  $('#playView').classList.toggle('player-fullscreen', fullscreen);
+  if (fullscreen) showPlayerControls();
+  else {
+    clearTimeout(playerIdleTimer);
+    $('#playView').classList.remove('player-idle');
+  }
+});
+
+function updatePlayerChrome() {
+  const duration = Number.isFinite(v.duration) ? v.duration : 0;
+  const current = Number.isFinite(v.currentTime) ? v.currentTime : 0;
+  const progress = duration ? Math.min(100, current / duration * 100) : 0;
+  $('#playerSeek').value = String(Math.round(progress * 10));
+  $('#playerSeek').style.setProperty('--seek-progress', `${progress}%`);
+  $('#playerCurrentTime').textContent = fmtTime(current);
+  $('#playerDuration').textContent = fmtTime(duration);
+  const playing = !v.paused && !v.ended;
+  $('#playerToggleBtn').textContent = playing ? 'Ⅱ' : '▶';
+  $('#playerToggleBtn').setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  $('#playerToggleBtn').title = playing ? 'Pause' : 'Play';
+}
+
+$('#playerSeek').oninput = () => {
+  const duration = Number.isFinite(v.duration) ? v.duration : 0;
+  const progress = +$('#playerSeek').value / 1000;
+  $('#playerCurrentTime').textContent = fmtTime(duration * progress);
+  $('#playerSeek').style.setProperty('--seek-progress', `${progress * 100}%`);
+};
+$('#playerSeek').onchange = () => {
+  if (Number.isFinite(v.duration)) v.currentTime = v.duration * (+$('#playerSeek').value / 1000);
+};
+$('#playerToggleBtn').onclick = () => {
+  if (v.paused) v.play().catch(onAudioBlocked);
+  else v.pause();
+};
+$('#playerRewindBtn').onclick = () => { v.currentTime = Math.max(0, v.currentTime - 10); };
+$('#playerForwardBtn').onclick = () => {
+  v.currentTime = Math.min(Number.isFinite(v.duration) ? v.duration : v.currentTime + 10, v.currentTime + 10);
+};
+$('#playerSettingsBtn').onclick = () => {
+  $('#playerSettingsPanel').hidden = !$('#playerSettingsPanel').hidden;
+};
+$('#playerChatToggle').onclick = () => {
+  $('#partyChatPanel').hidden = !$('#partyChatPanel').hidden;
+};
+$('#playerFullscreenBtn').onclick = async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await $('#playView').requestFullscreen?.();
+  } catch (error) {
+    toast(error.message || 'Nie można przełączyć trybu pełnoekranowego.');
+  }
+};
+v.addEventListener('click', () => {
+  if (v.paused) v.play().catch(onAudioBlocked);
+  else v.pause();
+});
+v.addEventListener('dblclick', async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await $('#playView').requestFullscreen?.();
+  } catch (error) {
+    toast(error.message || 'Nie można przełączyć trybu pełnoekranowego.');
+  }
+});
+v.addEventListener('timeupdate', updatePlayerChrome);
+v.addEventListener('loadedmetadata', updatePlayerChrome);
+v.addEventListener('durationchange', updatePlayerChrome);
+v.addEventListener('play', updatePlayerChrome);
+v.addEventListener('pause', updatePlayerChrome);
+v.addEventListener('play', showPlayerControls);
+v.addEventListener('pause', showPlayerControls);
 
 function updatePlayerModeUI() {
   const isParty = clientWatchMode === 'party';
@@ -1404,15 +1994,18 @@ function updatePlayerModeUI() {
 }
 
 function showPlayerView() {
+  document.body.classList.remove('title-page');
   $('#browseView').hidden = true;
   $('#subpageView').hidden = true;
   $('#playView').hidden = false;
-  $('#ambient').style.backgroundImage = cur && cur.t ? `url("${cur.t.poster}")` : '';
+  const artwork = cur?.t?.backdropUrl || cur?.t?.posterUrl || '';
+  $('#ambient').style.backgroundImage = artwork ? `url("${artwork}")` : '';
   updatePlayerModeUI();
 }
 
 function updateLivePill() {
   const pill = $('#livePill');
+  $('#inviteRoomBtn').hidden = !(partyState?.active && partyState.hostUserId === authUser?.id);
   if (partyState && partyState.active && partyState.video) {
     pill.hidden = false;
     const titleObj = lib.find(x => x.episodes.some(e => e.file === partyState.video));
@@ -1463,6 +2056,18 @@ async function openVideo(file) {
   }
   const plAud = meta.audio.find(a => a.pl);
   aSel.value = plAud ? plAud.i : 0;
+
+  const qualityRes = await fetch('/api/qualities?name=' + enc(file));
+  const qualityData = qualityRes.ok ? await qualityRes.json() : { qualities: [{ id: 'native', label: 'Natywnie (oryginał)', url: '/video/' + enc(file) }] };
+  const qSel = $('#qSel');
+  qSel.replaceChildren();
+  qualityData.qualities.forEach(option => {
+    const element = document.createElement('option');
+    element.value = option.url;
+    element.textContent = option.label;
+    element.dataset.hls = option.type === 'hls' ? '1' : '0';
+    qSel.appendChild(element);
+  });
 
   const sSel = $('#sSel');
   sSel.replaceChildren();
@@ -1557,7 +2162,7 @@ async function setSource() {
   v.pause(); aud.pause();
   audMode = 'none'; audFile = null; audBase = 0;
   aud.removeAttribute('src'); aud.load();
-  v.src = '/video/' + enc(cur.file);
+  v.src = $('#qSel').value || '/video/' + enc(cur.file);
   v.load();
   await new Promise(r => v.addEventListener('loadedmetadata', r, { once: true }));
   if (my !== token) return;
@@ -1652,6 +2257,20 @@ v.addEventListener('pause', () => {
   }
 });
 
+document.addEventListener('keydown', event => {
+  showPlayerControls();
+  if ($('#playView').hidden || event.target.matches('input, select, textarea')) return;
+  if (event.code === 'Space') {
+    event.preventDefault();
+    if (v.paused) v.play().catch(onAudioBlocked);
+    else v.pause();
+  } else if (event.code === 'ArrowLeft') {
+    v.currentTime = Math.max(0, v.currentTime - 10);
+  } else if (event.code === 'ArrowRight') {
+    v.currentTime = Math.min(Number.isFinite(v.duration) ? v.duration : v.currentTime + 10, v.currentTime + 10);
+  }
+});
+
 v.addEventListener('waiting', () => { if (!v.paused && !gating) aud.pause(); });
 v.addEventListener('playing', () => {
   if (gating || v.paused || !aud.paused || aud.ended) return;
@@ -1679,6 +2298,19 @@ $('#aSel').onchange = () => {
   if (!v.paused) playTogether(); else alignAudio(audTarget());
 };
 $('#sSel').onchange = () => { applySubs(); };
+$('#qSel').onchange = () => {
+  const time = v.currentTime || 0;
+  if ($('#qSel').selectedOptions[0]?.dataset.hls === '1') {
+    fetch($('#qSel').value).then(r => r.json()).then(data => {
+      if (data.url) {
+        v.pause(); v.src = data.url; v.load();
+        v.currentTime = time;
+      }
+    });
+  } else {
+    setSource().then(() => { if (time > 0) v.currentTime = time; });
+  }
+};
 
 function applyTiming(s, tol = 0.4) {
   quiet();
@@ -1720,10 +2352,59 @@ setInterval(() => {
   else aud.playbackRate = 1;
 }, 500);
 
+async function loadPartyChat() {
+  try {
+    const response = await fetch('/api/rooms/main/chat');
+    if (!response.ok) return;
+    const messages = await response.json();
+    const box = $('#partyChatMessages');
+    box.replaceChildren();
+    for (const message of messages) {
+      const row = document.createElement('div');
+      row.className = 'party-chat-message';
+      const name = document.createElement('strong');
+      name.textContent = message.username;
+      row.append(name, document.createTextNode(message.message));
+      box.appendChild(row);
+    }
+    box.scrollTop = box.scrollHeight;
+  } catch {}
+}
+
+$('#partyChatForm').onsubmit = async event => {
+  event.preventDefault();
+  const input = $('#partyChatInput');
+  const message = input.value.trim();
+  if (!message) return;
+  try {
+    await fetch('/api/rooms/main/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, profileId: activeProfile?.id }),
+    });
+    input.value = '';
+    await loadPartyChat();
+  } catch {}
+};
+
+$('#partyChatToggle').onclick = () => {
+  const messages = $('#partyChatMessages');
+  const form = $('#partyChatForm');
+  const hidden = messages.hidden;
+  messages.hidden = !hidden;
+  form.hidden = !hidden;
+  $('#partyChatToggle').textContent = hidden ? 'Ukryj' : 'Pokaż';
+};
+
 function connect() {
+  if (eventSource) eventSource.close();
   const es = new EventSource('/events');
+  eventSource = es;
   es.onmessage = e => {
     const m = JSON.parse(e.data);
+    if (m.type === 'chat') {
+      loadPartyChat();
+    }
     if (m.party) {
       partyState = m.party;
       updateLivePill();
@@ -1733,6 +2414,7 @@ function connect() {
     }
     if (m.type === 'state') {
       applyPartyState(m.party);
+      if (m.party?.active) loadPartyChat();
     } else if (m.type === 'end' && m.party) {
       partyState = m.party;
       updateLivePill();
@@ -1810,6 +2492,8 @@ $('#brandBtn').onclick = () => { window.location.hash = '#/'; };
 $('#navHome').onclick = () => { window.location.hash = '#/'; };
 $('#navMovies').onclick = () => { window.location.hash = '#/movies'; };
 $('#navSeries').onclick = () => { window.location.hash = '#/series'; };
+$('#navFavorites').onclick = () => { window.location.hash = '#/favorites'; };
+$('#navWatchLater').onclick = () => { window.location.hash = '#/watch-later'; };
 
 document.querySelectorAll('.cat-tab').forEach(b => {
   b.onclick = () => {
@@ -1864,6 +2548,154 @@ $('#manageProfBtn').onclick = () => {
   renderProfilesList();
 };
 
+$('#adminPanelBtn').onclick = () => {
+  $('#profileDropdown').hidden = true;
+  window.location.href = '/admin';
+};
+
+$('#logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  localStorage.removeItem('bob_profile_id');
+  localStorage.removeItem('bob_profiles_cache');
+  window.location.reload();
+};
+
+let authMode = 'login';
+let appStarted = false;
+let eventSource = null;
+function setAuthMode(mode) {
+  authMode = mode;
+  const registering = mode === 'register';
+  $('#authTitle').textContent = t(registering ? 'register' : 'login');
+  $('#authDescription').textContent = t(registering ? 'authRegisterDescription' : 'authLoginDescription');
+  $('#authSubmit').textContent = t(registering ? 'register' : 'login');
+  $('#authSwitch').textContent = t(registering ? 'hasAccount' : 'noAccount');
+  $('#authPassword').autocomplete = registering ? 'new-password' : 'current-password';
+  if (registering) $('#authPassword').minLength = 12;
+  else $('#authPassword').removeAttribute('minlength');
+  $('#authError').hidden = true;
+}
+
+$('#authSwitch').onclick = () => setAuthMode(authMode === 'login' ? 'register' : 'login');
+$('#authForm').onsubmit = async event => {
+  event.preventDefault();
+  const endpoint = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+  const body = {
+    username: $('#authUsername').value.trim(),
+    password: $('#authPassword').value,
+    remember: $('#rememberMe').checked,
+  };
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Nie udało się zalogować.');
+    authUser = result.user || { username: result.username, role: result.role };
+    $('#accountName').textContent = `Konto: ${authUser.username}`;
+    $('#authPassword').value = '';
+    $('#authModal').hidden = true;
+    await startAuthenticatedApp();
+  } catch (error) {
+    $('#authError').textContent = error.message;
+    $('#authError').hidden = false;
+  }
+};
+
+async function startAuthenticatedApp() {
+  if (appStarted) return;
+  appStarted = true;
+  try {
+    await loadProfiles();
+    await loadLibrary();
+    connect();
+    handleRoute();
+  } catch (error) {
+    appStarted = false;
+    $('#authError').textContent = error.message;
+    $('#authError').hidden = false;
+    $('#authModal').hidden = false;
+  }
+}
+
+async function bootstrap() {
+  try {
+    const response = await fetch('/api/auth/me');
+    const result = await response.json();
+    if (!response.ok || !result.authenticated) {
+      $('#authModal').hidden = false;
+      return;
+    }
+    authUser = result.user;
+    $('#accountName').textContent = `Konto: ${authUser.username}`;
+    $('#authModal').hidden = true;
+    await startAuthenticatedApp();
+  } catch {
+    $('#authModal').hidden = false;
+    $('#authError').textContent = 'Nie można połączyć się z serwerem.';
+    $('#authError').hidden = false;
+  }
+}
+
+$('#joinRoomBtn').onclick = () => {
+  $('#profileDropdown').hidden = true;
+  $('#joinError').hidden = true;
+  $('#joinModal').hidden = false;
+  $('#inviteCodeInput').focus();
+};
+$('#cancelJoinBtn').onclick = () => { $('#joinModal').hidden = true; };
+$('#roomJoinForm').onsubmit = async event => {
+  event.preventDefault();
+  if (!activeProfile) {
+    $('#joinError').textContent = 'Najpierw utwórz i wybierz profil.';
+    $('#joinError').hidden = false;
+    return;
+  }
+  try {
+    const response = await fetch('/api/rooms/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: $('#inviteCodeInput').value, profileId: activeProfile.id }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Nie udało się dołączyć.');
+    $('#joinModal').hidden = true;
+    $('#inviteCodeInput').value = '';
+    partyState = result.party;
+    clientWatchMode = 'party';
+    if (result.party?.video) {
+      window.location.hash = `#/watch?v=${enc(result.party.video)}&mode=party`;
+      await loadPartyChat();
+    }
+  } catch (error) {
+    $('#joinError').textContent = error.message;
+    $('#joinError').hidden = false;
+  }
+};
+
+$('#inviteRoomBtn').onclick = async () => {
+  try {
+    const response = await fetch('/api/rooms/invites', { method: 'POST' });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Nie udało się utworzyć zaproszenia.');
+    $('#inviteCode').textContent = result.code;
+    $('#inviteModal').hidden = false;
+  } catch (error) {
+    toast(error.message);
+  }
+};
+$('#copyInviteBtn').onclick = async () => {
+  try {
+    await navigator.clipboard.writeText($('#inviteCode').textContent);
+    toast('Skopiowano kod zaproszenia.');
+  } catch {
+    toast(`Kod zaproszenia: ${$('#inviteCode').textContent}`);
+  }
+};
+$('#closeInviteBtn').onclick = () => { $('#inviteModal').hidden = true; };
+
 $('#clearCacheBtn').onclick = async () => {
   try {
     const res = await (await fetch('/api/cache', { method: 'POST' })).json();
@@ -1905,7 +2737,7 @@ $('#posterFileInput').onchange = (e) => {
         $('#posterModal').hidden = true;
         const freshPoster = res.poster;
         $('#subPosterImg').src = freshPoster;
-        $('#subBackdrop').style.backgroundImage = `url("${freshPoster}")`;
+        $('#subBackdrop').style.backgroundImage = 'none';
         $('#ambient').style.backgroundImage = `url("${freshPoster}")`;
         loadLibrary();
       }
@@ -1930,7 +2762,7 @@ $('#savePosterUrlBtn').onclick = async () => {
       $('#posterModal').hidden = true;
       const freshPoster = res.poster;
       $('#subPosterImg').src = freshPoster;
-      $('#subBackdrop').style.backgroundImage = `url("${freshPoster}")`;
+      $('#subBackdrop').style.backgroundImage = 'none';
       $('#ambient').style.backgroundImage = `url("${freshPoster}")`;
       loadLibrary();
     }
@@ -1950,8 +2782,20 @@ window.addEventListener('pagehide', () => saveWatchProgress());
 
 setTheme(curTheme);
 setLanguage(curLang);
-showProfilesModal(true);
-loadProfiles().then(loadLibrary).then(connect).then(handleRoute);
+bootstrap();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(async registrations => {
+    const appRegistrations = registrations.filter(registration =>
+      new URL(registration.scope).origin === location.origin
+      && new URL(registration.scope).pathname === '/'
+    );
+    await Promise.all(appRegistrations.map(registration => registration.unregister()));
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter(key => key.startsWith('bwt-v3-shell-')).map(key => caches.delete(key)));
+    }
+  }).catch(error => console.warn('Unable to remove the obsolete app cache:', error));
+}
 </script>
 </body>
 </html>

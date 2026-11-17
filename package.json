@@ -1,0 +1,14 @@
+{
+  "name": "bob-watch-together",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Local synchronized streaming platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

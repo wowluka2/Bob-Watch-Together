@@ -1,0 +1,38 @@
+services:
+  bob-watch-together:
+    build: .
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      VIDEO_DIR: /data/videos
+      CACHE_DIR: /data/cache
+      DATABASE_FILE: /data/platform.db
+      BACKUP_DIR: /data/backups
+      PROFILES_FILE: /data/profiles.json
+      METADATA_FILE: /data/metadata.json
+      ADMIN_FILE: /data/admin.json
+      PARTY_FILE: /data/party.json
+    volumes:
+      - ./videos:/data/videos
+      - ./data:/data
+    restart: unless-stopped
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: "${DOMAIN:-localhost}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - bob-watch-together
+
+volumes:
+  caddy-data:
+  caddy-config:

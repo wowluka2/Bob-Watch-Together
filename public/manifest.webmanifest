@@ -1,0 +1,13 @@
+{
+  "name": "Bob Watch Together",
+  "short_name": "BWT 3.0",
+  "description": "Lokalna synchronizowana platforma do oglądania.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070b12",
+  "theme_color": "#4db7ef",
+  "orientation": "any",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

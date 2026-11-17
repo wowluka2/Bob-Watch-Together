@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bob Watch Together 3.0 — Administracja</title>
+  <style>
+    :root { color-scheme:dark; --bg:#070b12; --panel:#111827; --panel2:#172033; --line:rgba(148,163,184,.16); --text:#f7f9fc; --muted:#96a4b8; --accent:#4db7ef; --accent2:#7b61ff; --danger:#ff6674; --success:#36d399 }
+    * { box-sizing:border-box } body { margin:0; min-height:100vh; background:radial-gradient(circle at 15% -10%,rgba(77,183,239,.18),transparent 30%),radial-gradient(circle at 100% 20%,rgba(123,97,255,.12),transparent 28%),var(--bg); color:var(--text); font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif }
+    header { height:72px; display:flex; align-items:center; justify-content:space-between; padding:0 clamp(18px,4vw,48px); border-bottom:1px solid var(--line); background:rgba(7,11,18,.82); backdrop-filter:blur(18px); position:sticky; top:0; z-index:10 }
+    header a { color:var(--text); text-decoration:none } .brand { display:flex; align-items:center; gap:10px; font-size:18px; font-weight:850 } .brand-badge { width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 24px rgba(77,183,239,.22)}
+    main { max-width:1280px; margin:auto; padding:28px clamp(16px,3vw,32px) 64px }
+    .panel { background:linear-gradient(145deg,rgba(23,32,51,.94),rgba(17,24,39,.94)); border:1px solid var(--line); border-radius:18px; padding:20px; box-shadow:0 18px 45px rgba(0,0,0,.18) }
+    .stats { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:14px } .stat-label { color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em }.stat-value{font-size:28px;font-weight:850;margin-top:5px}.stat-note{color:var(--muted);font-size:12px}
+    .layout { display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.8fr);gap:14px;margin-top:14px }.stack{display:flex;flex-direction:column;gap:14px}
+    h1,h2,h3{margin-top:0} h1{font-size:32px} h2{font-size:18px} h3{font-size:15px;margin-bottom:10px}.muted{color:var(--muted)}
+    .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.row.spaced{justify-content:space-between}.wide{overflow:auto;max-height:390px}
+    button,input,select{font:inherit;border-radius:9px} input,select{border:1px solid var(--line);background:#0d1421;color:var(--text);padding:10px 12px;outline:none}input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(77,183,239,.12)}
+    button{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:10px 13px;cursor:pointer;font-weight:700;transition:.18s}button:hover{transform:translateY(-1px);border-color:rgba(77,183,239,.45)}button.primary{background:linear-gradient(135deg,var(--accent),#3280d9);border:none;color:#07111d}button.danger{background:rgba(255,102,116,.12);border-color:rgba(255,102,116,.4);color:#ff929b}button.ghost{background:transparent}
+    table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px 10px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:12px;text-transform:uppercase}td:last-child{text-align:right}
+    #login{max-width:420px;margin:15vh auto;padding:28px}#login input{width:100%;margin:7px 0 13px}#app[hidden],#login[hidden]{display:none}.notice{min-height:24px;color:#83d4fa}.notice.error{color:#ff929b}
+    .profile-list{display:flex;flex-direction:column;gap:8px}.profile-item{display:flex;align-items:center;justify-content:space-between;padding:9px;border:1px solid var(--line);border-radius:10px}.profile-item strong{display:flex;gap:8px;align-items:center}.profile-item button{padding:7px 9px}
+    .health{display:flex;align-items:center;gap:8px}.health-dot{width:9px;height:9px;border-radius:50%;background:var(--success);box-shadow:0 0 12px var(--success)}
+    @media(max-width:980px){.stats{grid-template-columns:repeat(2,minmax(150px,1fr))}.layout{grid-template-columns:1fr}}@media(max-width:560px){header{height:64px}.brand-text{display:none}.stats{grid-template-columns:1fr 1fr}.panel{padding:16px}.stat-value{font-size:22px}.layout{gap:10px}}
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/"><span class="brand-badge">🍿</span><span class="brand-text">Bob Watch Together 3.0</span></a>
+    <a class="muted" href="/">Powrót do biblioteki</a>
+  </header>
+  <main>
+    <section id="login" class="panel">
+      <h1>Panel administratora</h1><p class="muted">Zaloguj się, aby zarządzać biblioteką i użytkownikami.</p>
+      <form id="loginForm"><label>Login</label><input id="username" autocomplete="username" required><label>Hasło</label><input id="password" type="password" autocomplete="current-password" required><button class="primary" type="submit" style="width:100%;margin-top:4px">Zaloguj się</button><div id="loginNotice" class="notice"></div></form>
+    </section>
+    <section id="app" hidden>
+      <div class="row spaced"><div><div class="health"><span class="health-dot"></span><span class="muted">System działa</span></div><h1 style="margin:4px 0">Administracja</h1></div><button id="logoutBtn" class="ghost">Wyloguj</button></div>
+      <div class="stats" id="stats"></div>
+      <div class="layout">
+        <div class="stack">
+          <section class="panel"><div class="row spaced"><h2>Biblioteka</h2><button id="refreshLibraryBtn">Odśwież bibliotekę</button></div><div class="wide"><table><thead><tr><th>Tytuł</th><th>Typ</th><th>Pliki</th></tr></thead><tbody id="libraryBody"></tbody></table></div></section>
+          <section class="panel"><h2>Kontrola seansu</h2><div class="row"><button class="danger" id="endPartyBtn">Zakończ wspólny seans</button><button id="refreshMetaBtn">Wyczyść metadane</button><button id="testTmdbBtn">Testuj grafiki TMDb</button><button id="pruneCacheBtn">Wyczyść cache</button></div></section>
+        </div>
+        <div class="stack">
+          <section class="panel"><div class="row spaced"><h2>Profile</h2><span class="muted" id="profileCount"></span></div><form id="profileForm" class="row"><input id="profileName" placeholder="Nazwa profilu" maxlength="40" required><button class="primary">Dodaj</button></form><div id="profileList" class="profile-list" style="margin-top:12px"></div><button class="danger" id="resetProfilesBtn" style="margin-top:12px;width:100%">Resetuj profile</button></section>
+          <section class="panel"><h2>Konto administratora</h2><form id="usernameForm" class="row"><input id="newUsername" placeholder="Nowy login" minlength="3" maxlength="32" required><button>Zmień login</button></form><form id="passwordForm" class="row" style="margin-top:10px"><input id="newPassword" type="password" minlength="12" required placeholder="Nowe hasło"><button>Zmień hasło</button></form></section>
+          <section class="panel"><h2>Sesje i kopie zapasowe</h2><div id="sessionCount" class="muted"></div><div class="row" style="margin-top:10px"><button id="revokeSessionsBtn" class="danger">Wyloguj wszystkie sesje</button><button id="backupBtn" class="primary">Utwórz kopię SQLite</button></div></section>
+          <section class="panel"><div class="row spaced"><h2>Konta i użytkownicy</h2><button id="toggleUserForm">Dodaj konto</button></div><form id="userForm" class="row" hidden><input id="userName" placeholder="Login" minlength="3" maxlength="32" required><input id="userPassword" type="password" minlength="12" placeholder="Hasło" required><select id="userRole"><option value="viewer">Użytkownik</option><option value="editor">Edytor</option><option value="administrator">Administrator</option></select><button class="primary">Utwórz konto</button></form><div id="userList" class="profile-list" style="margin-top:12px"></div></section>
+          <section class="panel"><h2>Konsola SQLite</h2><p class="muted">Dozwolone są tylko SELECT, PRAGMA i EXPLAIN.</p><textarea id="sqlQuery" style="width:100%;min-height:110px;border:1px solid var(--line);border-radius:9px;background:#0d1421;color:var(--text);padding:10px;font-family:monospace" placeholder="SELECT * FROM users;"></textarea><div class="row" style="margin-top:8px"><button id="runSqlBtn" class="primary">Wykonaj kwerendę</button></div><div class="wide" style="margin-top:10px"><pre id="sqlOutput" style="white-space:pre-wrap;color:#bfe7ff"></pre></div></section>
+        </div>
+      </div>
+      <div id="notice" class="notice"></div>
+    </section>
+  </main>
+  <script>
+    async function api(url, options={}) { const r=await fetch(url,options); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||`HTTP ${r.status}`); return d; }
+    function showLogin(){document.getElementById('login').hidden=false;document.getElementById('app').hidden=true}
+    function showApp(){document.getElementById('login').hidden=true;document.getElementById('app').hidden=false;loadAll()}
+    async function checkAuth(){try{const m=await api('/api/auth/me');m.authenticated?showApp():showLogin()}catch{showLogin()}}
+    async function loadAll(){
+      try{
+        const [stats,library,profiles,cache,users]=await Promise.all([api('/api/admin/stats'),api('/api/library'),api('/api/profiles'),api('/api/cache'),api('/api/admin/users')]);
+        const artworkStatus=stats.tmdbArtworkStatus?.status||'not-checked';
+        const artworkLabels={'not-checked':'jeszcze nie sprawdzono','checking':'sprawdzanie…','backdrop-found':'banner znaleziony','poster-only':'jest tylko plakat','no-match':'brak dopasowania','provider-error':'błąd dostawcy','missing-key':'brak klucza'};
+        const cards=[['Wersja',stats.version,'platforma'],['Pozycje',stats.titleCount,'tytułów'],['Pliki wideo',stats.mediaCount,'w bibliotece'],['Profile',stats.profileCount,'lokalnych'],['Oglądający',stats.viewerCount,'połączeń'],['Cache',cache.formatted,`limit ${cache.formattedLimit}`],['FFmpeg',stats.ffmpeg?'Gotowy':'Brak','transkodowanie'],['TMDb',stats.tmdbConfigured?'Klucz wykryty':'Brak klucza',artworkLabels[artworkStatus]||artworkStatus],['OMDb',stats.omdbConfigured?'Konfig.':'Wyłączone','metadane']];
+        document.getElementById('stats').innerHTML=cards.map(([label,value,note])=>`<article class="panel"><div class="stat-label">${label}</div><div class="stat-value">${value}</div><div class="stat-note">${note}</div></article>`).join('');
+        document.getElementById('profileCount').textContent=`${profiles.length} profili`;
+        const body=document.getElementById('libraryBody');body.replaceChildren();library.items.forEach(item=>{const tr=document.createElement('tr');tr.innerHTML='<td></td><td></td><td></td>';tr.children[0].textContent=item.title;tr.children[1].textContent=item.kind==='series'?'Serial':'Film';tr.children[2].textContent=item.episodes.length;body.appendChild(tr)});
+        const plist=document.getElementById('profileList');plist.replaceChildren();profiles.forEach(profile=>{const el=document.createElement('div');el.className='profile-item';el.innerHTML='<strong></strong><span></span>';el.children[0].textContent=`${profile.avatar||'👤'} ${profile.name}`;const edit=document.createElement('button');edit.textContent='Usuń';edit.onclick=()=>deleteProfile(profile.id,profile.name);el.children[1].appendChild(edit);plist.appendChild(el)});
+        const ulist=document.getElementById('userList');ulist.replaceChildren();users.forEach(user=>{
+          const el=document.createElement('div');el.className='profile-item';
+          el.innerHTML='<strong></strong><span></span>';
+          el.children[0].textContent=`${user.avatar||'👤'} ${user.display_name||user.username}`;
+          const controls=document.createElement('div');controls.className='row';
+          const toggle=document.createElement('button');toggle.textContent=user.active?'Wyłącz':'Włącz';toggle.onclick=()=>toggleUser(user.id,!user.active);
+          const remove=document.createElement('button');remove.textContent='Usuń';remove.className='danger';remove.onclick=()=>deleteUser(user.id,user.username);
+          controls.append(toggle,remove);el.children[1].appendChild(controls);ulist.appendChild(el);
+        });
+        await loadSessions();
+      }catch(error){setNotice(error.message,true)}
+    }
+    function setNotice(text,error=false){const el=document.getElementById('notice');el.textContent=text;el.className='notice'+(error?' error':'')}
+    async function deleteProfile(id,name){if(!confirm(`Usunąć profil „${name}”?`))return;try{await api(`/api/profiles/${id}`,{method:'DELETE'});await loadAll();setNotice('Usunięto profil.')}catch(error){setNotice(error.message,true)}}
+    document.getElementById('loginForm').onsubmit=async e=>{e.preventDefault();try{await api('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('username').value,password:document.getElementById('password').value})});showApp()}catch(error){document.getElementById('loginNotice').textContent=error.message}};
+    document.getElementById('logoutBtn').onclick=async()=>{await api('/api/auth/logout',{method:'POST'});showLogin()};
+    document.getElementById('profileForm').onsubmit=async e=>{e.preventDefault();try{await api('/api/profiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('profileName').value})});document.getElementById('profileName').value='';await loadAll();setNotice('Dodano profil.')}catch(error){setNotice(error.message,true)}};
+    document.getElementById('resetProfilesBtn').onclick=async()=>{if(!confirm('Przywrócić domyślne profile?'))return;try{await api('/api/admin/profiles/reset',{method:'POST'});await loadAll();setNotice('Przywrócono profile.')}catch(error){setNotice(error.message,true)}};
+    document.getElementById('usernameForm').onsubmit=async e=>{e.preventDefault();try{const r=await api('/api/admin/username',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('newUsername').value})});document.getElementById('newUsername').value='';setNotice(`Zmieniono login na ${r.username}.`)}catch(error){setNotice(error.message,true)}};
+    document.getElementById('passwordForm').onsubmit=async e=>{e.preventDefault();try{await api('/api/admin/password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('newPassword').value})});document.getElementById('newPassword').value='';setNotice('Zmieniono hasło.')}catch(error){setNotice(error.message,true)}};
+    document.getElementById('pruneCacheBtn').onclick=async()=>{try{const r=await api('/api/cache',{method:'POST'});await loadAll();setNotice(`Zwolniono ${r.formatted}.`)}catch(error){setNotice(error.message,true)}};
+    document.getElementById('endPartyBtn').onclick=async()=>{try{await api('/api/admin/party/end',{method:'POST'});setNotice('Zakończono wspólny seans.')}catch(error){setNotice(error.message,true)}};
+    document.getElementById('refreshMetaBtn').onclick=async()=>{try{await api('/api/admin/metadata/refresh',{method:'POST'});setNotice('Wyczyszczono metadane.')}catch(error){setNotice(error.message,true)}};
+    document.getElementById('testTmdbBtn').onclick=async()=>{try{const result=await api('/api/admin/tmdb/test',{method:'POST'});await loadAll();setNotice(`${result.title}: ${result.backdropAvailable?'znaleziono banner':result.posterAvailable?'znaleziono plakat, brak bannera':result.error||'brak grafiki'}${result.error?` — ${result.error}`:''}`,!result.backdropAvailable)}catch(error){setNotice(error.message,true)}};
+    document.getElementById('refreshLibraryBtn').onclick=async()=>{try{const r=await api('/api/admin/library/refresh',{method:'POST'});await loadAll();setNotice(`Odświeżono: ${r.titleCount} tytułów, ${r.mediaCount} plików.`)}catch(error){setNotice(error.message,true)}};
+    async function loadSessions(){try{const sessions=await api('/api/admin/sessions');const active=sessions.filter(session=>session.active).length;document.getElementById('sessionCount').textContent=`Aktywne sesje: ${active} · Łącznie: ${sessions.length}`;}catch(error){setNotice(error.message,true)}}
+    document.getElementById('revokeSessionsBtn').onclick=async()=>{if(!confirm('Wylogować wszystkie sesje, łącznie z obecną?'))return;try{await api('/api/admin/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({all:true})});setNotice('Wylogowano wszystkie sesje.');setTimeout(()=>location.reload(),500);}catch(error){setNotice(error.message,true)}};
+    document.getElementById('backupBtn').onclick=async()=>{try{const r=await api('/api/admin/backup',{method:'POST'});setNotice(`Utworzono kopię: ${r.file}`);}catch(error){setNotice(error.message,true)}};
+    document.getElementById('toggleUserForm').onclick=()=>{const form=document.getElementById('userForm');form.hidden=!form.hidden};
+    document.getElementById('userForm').onsubmit=async e=>{
+      e.preventDefault();
+      try{
+        await api('/api/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('userName').value,password:document.getElementById('userPassword').value,role:document.getElementById('userRole').value})});
+        e.target.reset();e.target.hidden=true;await loadAll();setNotice('Utworzono konto.');
+      }catch(error){setNotice(error.message,true)}
+    };
+    async function toggleUser(id,active){try{await api(`/api/admin/users/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({active})});await loadAll();setNotice(active?'Włączono konto.':'Wyłączono konto.')}catch(error){setNotice(error.message,true)}}
+    async function deleteUser(id,username){if(!confirm(`Usunąć konto „${username}”?`))return;try{await api(`/api/admin/users/${id}`,{method:'DELETE'});await loadAll();setNotice('Usunięto konto.')}catch(error){setNotice(error.message,true)}}
+    document.getElementById('runSqlBtn').onclick=async()=>{
+      try{
+        const r=await api('/api/admin/sql',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:document.getElementById('sqlQuery').value})});
+        document.getElementById('sqlOutput').textContent=JSON.stringify(r.rows,null,2);
+      }catch(error){document.getElementById('sqlOutput').textContent=error.message}
+    };
+    checkAuth();
+  </script>
+</body>
+</html>
